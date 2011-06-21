@@ -70,7 +70,7 @@ OpenLayers.WPS = OpenLayers.Class({
     responseDOM: null,
 
     /**
-     * property: describeprocessurlget
+     * property: describeProcessUrlGet
      * {string}
      */
     describeProcessUrlGet: null,
@@ -763,7 +763,7 @@ OpenLayers.WPS = OpenLayers.Class({
         var status = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "Status");
         if (status.length > 0) { this.parseStatus(status[0]); }
 
-        if (this.status == "ProcessSucceeded") {
+        if (this.status == "ProcessSucceeded" || this.status == "ProcessStarted") {
             var procOutputsDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "ProcessOutputs");
             var outputs = null;
             if (procOutputsDom.length) {
