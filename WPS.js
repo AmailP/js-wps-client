@@ -53,7 +53,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * Property: getCapabilitiesUrlPost
      * {String}
      */
-    getcapabilitiesurlpost: null,
+    getCapabilitiesUrlPost: null,
 
     /**
      * property: responseText
@@ -329,21 +329,28 @@ OpenLayers.WPS = OpenLayers.Class({
         var operationsMetadata = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadataNode, this.owsNS, "Operation");
         for (var i = 0; i < operationsMetadata.length; i++) {
             var operationName = operationsMetadata[i].getAttribute("name");
+
             var getNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i],this.owsNS, "Get")[0];
-           
-            var get = OpenLayers.Format.XML.prototype.getAttributeNS(getNode,this.xlinkNS, "href");
+            var getURL = "";
+            if(getNode) {
+            	getURL = OpenLayers.Format.XML.prototype.getAttributeNS(getNode,this.xlinkNS, "href");
+            }
+
             var postNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i],this.owsNS, "Post")[0];
-            var post = OpenLayers.Format.XML.prototype.getAttributeNS(postNode,this.xlinkNS, "href");
+            var postURL = "";
+            if(postNode) {
+            	postURL = OpenLayers.Format.XML.prototype.getAttributeNS(postNode,this.xlinkNS, "href");
+            }
 
             switch(operationName.toLowerCase()) {
-                case "getcapabilities": this.getCapabilitiesUrlGet = get;
-                                        this.getCapabilitiesUrlPost = post;
+                case "getcapabilities": this.getCapabilitiesUrlGet = getURL;
+                                        this.getCapabilitiesUrlPost = postURL;
                                         break;
-                case "describeprocess": this.describeProcessUrlGet = get;
-                                        this.describeProcessUrlPost = post;
+                case "describeprocess": this.describeProcessUrlGet = getURL;
+                                        this.describeProcessUrlPost = postURL;
                                         break;
-                case "execute": this.executeUrlGet = get;
-                                        this.executeUrlPost = post;
+                case "execute":         this.executeUrlGet = getURL;
+                                        this.executeUrlPost = postURL;
                                         break;
             }
         }
