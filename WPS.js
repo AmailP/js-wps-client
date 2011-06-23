@@ -6,21 +6,21 @@
  * Supported WPS Versions: 1.0.0
  *
  * The Library is designed to work with OpenLayers [http://openlayers.org]
- * 
- * Licence:     
+ *
+ * Licence:
  *  Web Processing Service Client implementation
  *  Copyright (C) 2009 Jachym Cepicky
- * 
+ *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- * 
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- * 
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *
@@ -28,6 +28,7 @@
  *  - a lot
  */
 
+/*global OpenLayers: true, console: true */
 
 /**
  * Class: OpenLayers.WPS
@@ -141,7 +142,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * Default: this
      */
     scope: this,
-    
+
     /**
      * Property:  abstr
      * {String}
@@ -180,19 +181,19 @@ OpenLayers.WPS = OpenLayers.Class({
 
     /**
      * Property: statusMessage
-     * {String} 
+     * {String}
      */
     statusMessage: null,
 
     /**
      * Property: statusTime
-     * {String} 
+     * {String}
      */
     statusTime: null,
 
     /**
      * Property: percentCompleted
-     * {String} 
+     * {String}
      */
     percentCompleted: null,
 
@@ -222,8 +223,10 @@ OpenLayers.WPS = OpenLayers.Class({
      * url - {String} initial url of GetCapabilities request
      * options - {Object}
      */
-    initialize: function(url,options) {
-        this.processes =  [];
+    initialize: function (url, options) {
+        'use strict';
+
+        this.processes = [];
         OpenLayers.Util.extend(this, options);
 
         this.getCapabilitiesUrlGet = url;
@@ -233,24 +236,25 @@ OpenLayers.WPS = OpenLayers.Class({
         this.describeProcessUrlPost = url;
         this.executeUrlPost = url;
 
-        OpenLayers.Util.extend(this,options);
+        OpenLayers.Util.extend(this, options);
 
         /* if (this.getCapabilitiesUrlGet) {
-             this.getCapabilitiesGet(this.getCapabilitiesUrlGet);
+         this.getCapabilitiesGet(this.getCapabilitiesUrlGet);
          }
-        */
+         */
 
-        this.wpsNS +=this.version;
+        this.wpsNS += this.version;
 
         OpenLayers.WPS.instances.push(this);
-        this.id = OpenLayers.WPS.instances.length-1;
+        this.id = OpenLayers.WPS.instances.length - 1;
 
         this.statusEvents = {
-                    "ProcessAccepted":this.onAccepted,
-                    "ProcessSucceeded":this.onSucceeded,
-                    "ProcessFailed":this.onFailed,
-                    "ProcessStarted":this.onStarted,
-                    "ProcessPaused":this.onPaused};
+            "ProcessAccepted": this.onAccepted,
+            "ProcessSucceeded": this.onSucceeded,
+            "ProcessFailed": this.onFailed,
+            "ProcessStarted": this.onStarted,
+            "ProcessPaused": this.onPaused
+        };
     },
 
     /**
@@ -259,7 +263,8 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameter:
      * url - {String} if ommited, this.getCapabilitiesUrlGet is taken
      */
-    getCapabilities : function(url) {
+    getCapabilities : function (url) {
+        'use strict';
         this.getCapabilitiesGet(url);
     },
 
@@ -270,13 +275,14 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameter:
      * url - {String} if ommited, this.getCapabilitiesUrlGet is taken
      */
-    getCapabilitiesGet : function(url) {
+    getCapabilitiesGet : function (url) {
+        'use strict';
         if (url) {
             this.getCapabilitiesUrlGet = url;
         }
-        var uri = OpenLayers.WPS.Utils.extendUrl(url,{service: this.service, version: this.version,request: "GetCapabilities"});
+        var uri = OpenLayers.WPS.Utils.extendUrl(url, {service: this.service, version: this.version, request: "GetCapabilities"});
 
-        var request = OpenLayers.Request.GET({url:uri, params:{},success:this.parseGetCapabilities,failure:this.onException,scope:this});
+        OpenLayers.Request.GET({url: uri, params: {}, success: this.parseGetCapabilities, failure: this.onException, scope: this});
     },
 
     /**
@@ -285,8 +291,9 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameter:
      * identifier
      */
-    describeProcess: function(identifier) {
-        if(this.describeProcessUrlGet) {
+    describeProcess: function (identifier) {
+        'use strict';
+        if (this.describeProcessUrlGet) {
             this.describeProcessGet(identifier);
         }
     },
@@ -297,13 +304,16 @@ OpenLayers.WPS = OpenLayers.Class({
      * Call DescribeProcess request via HTTP GET
      *
      * Parameter:
-     * identifier - {String} 
+     * identifier - {String}
      */
-    describeProcessGet : function(identifier) {
-        var uri = OpenLayers.WPS.Utils.extendUrl(this.describeProcessUrlGet,{service:this.service,version:this.version,
-                                                                request:"DescribeProcess",identifier:identifier});
+    describeProcessGet : function (identifier) {
+        'use strict';
+        var uri = OpenLayers.WPS.Utils.extendUrl(this.describeProcessUrlGet, {service: this.service,
+            version: this.version,
+            request: "DescribeProcess",
+            identifier: identifier});
 
-        var request = OpenLayers.Request.GET({url:uri,params:{},success:this.parseDescribeProcess,failure:this.onException,scope:this});
+        OpenLayers.Request.GET({url: uri, params: {}, success: this.parseDescribeProcess, failure: this.onException, scope: this});
     },
 
     /**
@@ -314,59 +324,71 @@ OpenLayers.WPS = OpenLayers.Class({
      * resp - {XMLHTTP}
      */
     parseGetCapabilities: function (resp) {
+        'use strict';
+
+        var dom, operationsMetadataNode, operationsMetadata, i, operationName, getNode, getURL, postNode, postURL,
+            processesNode, processes, identifier, title, abstract, version, process;
+
         this.responseText = resp.responseText;
-        var dom = resp.responseXML ? resp.responseXML : OpenLayers.parseXMLString(resp.responseText);
+        dom = resp.responseXML || OpenLayers.parseXMLString(resp.responseText);
         this.responseDOM = dom;
-        this.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS, "Title")[0].firstChild.nodeValue;
+        this.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
         this.abstract = null;
         try {
-            this.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS, "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {}
+            this.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
+        } catch (e1) {
+        }
 
         // describeProcess Get, Post
         // execute Get, Post
-        var operationsMetadataNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS, "OperationsMetadata")[0];
-        var operationsMetadata = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadataNode, this.owsNS, "Operation");
-        for (var i = 0; i < operationsMetadata.length; i++) {
-            var operationName = operationsMetadata[i].getAttribute("name");
 
-            var getNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i],this.owsNS, "Get")[0];
-            var getURL = "";
-            if(getNode) {
-            	getURL = OpenLayers.Format.XML.prototype.getAttributeNS(getNode,this.xlinkNS, "href");
+        operationsMetadataNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "OperationsMetadata")[0];
+        operationsMetadata = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadataNode, this.owsNS, "Operation");
+        for (i = 0; i < operationsMetadata.length; i = i + 1) {
+
+            operationName = operationsMetadata[i].getAttribute("name");
+
+            getNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i], this.owsNS, "Get")[0];
+            getURL = "";
+            if (getNode) {
+                getURL = OpenLayers.Format.XML.prototype.getAttributeNS(getNode, this.xlinkNS, "href");
             }
 
-            var postNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i],this.owsNS, "Post")[0];
-            var postURL = "";
-            if(postNode) {
-            	postURL = OpenLayers.Format.XML.prototype.getAttributeNS(postNode,this.xlinkNS, "href");
+            postNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i], this.owsNS, "Post")[0];
+            postURL = "";
+            if (postNode) {
+                postURL = OpenLayers.Format.XML.prototype.getAttributeNS(postNode, this.xlinkNS, "href");
             }
 
-            switch(operationName.toLowerCase()) {
-                case "getcapabilities": this.getCapabilitiesUrlGet = getURL;
-                                        this.getCapabilitiesUrlPost = postURL;
-                                        break;
-                case "describeprocess": this.describeProcessUrlGet = getURL;
-                                        this.describeProcessUrlPost = postURL;
-                                        break;
-                case "execute":         this.executeUrlGet = getURL;
-                                        this.executeUrlPost = postURL;
-                                        break;
+            switch (operationName.toLowerCase()) {
+            case "getcapabilities":
+                this.getCapabilitiesUrlGet = getURL;
+                this.getCapabilitiesUrlPost = postURL;
+                break;
+            case "describeprocess":
+                this.describeProcessUrlGet = getURL;
+                this.describeProcessUrlPost = postURL;
+                break;
+            case "execute":
+                this.executeUrlGet = getURL;
+                this.executeUrlPost = postURL;
+                break;
             }
         }
 
         // processes
-        var processesNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS, "ProcessOfferings")[0];
-        var processes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processesNode,this.wpsNS,  "Process");
-        for (var i = 0; i < processes.length; i++) {
-            var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i],this.owsNS,  "Identifier")[0].firstChild.nodeValue;
-            var title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i],this.owsNS,  "Title")[0].firstChild.nodeValue;
-            var abstract = null;
+        processesNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ProcessOfferings")[0];
+        processes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processesNode, this.wpsNS, "Process");
+        for (i = 0; i < processes.length; i = i + 1) {
+            identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Identifier")[0].firstChild.nodeValue;
+            title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Title")[0].firstChild.nodeValue;
+            abstract = null;
             try {
-                abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i],this.owsNS,  "Abstract")[0].firstChild.nodeValue;
-            } catch(e) {}
-            var version = OpenLayers.Format.XML.prototype.getAttributeNS(processes[i],this.wpsNS, "version");
-            var process = new OpenLayers.WPS.Process({identifier:identifier,title: title, abstract: abstract, version: version,wps:this});
+                abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Abstract")[0].firstChild.nodeValue;
+            } catch (e2) {
+            }
+            version = OpenLayers.Format.XML.prototype.getAttributeNS(processes[i], this.wpsNS, "version");
+            process = new OpenLayers.WPS.Process({identifier: identifier, title: title, abstract: abstract, version: version, wps: this});
             this.addProcess(process);
         }
 
@@ -380,16 +402,17 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameters:
      * process - {Object}
      */
-    addProcess: function(process) {
-        var oldOne = this.getProcess(process.identifier);
+    addProcess: function (process) {
+        'use strict';
+        var i, oldOne, newProcesses;
+        oldOne = this.getProcess(process.identifier);
         if (oldOne) {
-            var newProcesses = [];
-            for (var i = 0; i < this.processes.length; i++) {
-                if (this.processes[i] != oldOne) {
-                   newProcesses.push(this.process[i]); 
-                }
-                else {
-                   this.processes[i] = null;
+            newProcesses = [];
+            for (i = 0; i < this.processes.length; i = i + 1) {
+                if (this.processes[i] !== oldOne) {
+                    newProcesses.push(this.process[i]);
+                } else {
+                    this.processes[i] = null;
                 }
             }
             this.processes = newProcesses;
@@ -406,37 +429,43 @@ OpenLayers.WPS = OpenLayers.Class({
      * resp - {HTTPRexuest}
      */
     parseDescribeProcess: function (resp) {
-        try{
-        this.responseText = resp.responseText;
-        var dom = resp.responseXML ? resp.responseXML : OpenLayers.parseXMLString(resp.responseText);
-        this.responseDOM = dom;
+        'use strict';
 
-        var processes = dom.getElementsByTagName("ProcessDescription");
-        for (var i = 0; i < processes.length; i++) {
-            var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i],this.owsNS,  "Identifier")[0].firstChild.nodeValue;
-            var process = this.getProcess(identifier);
+        var i, dom, processes, identifier, process;
 
-            if (!process){
-                process = new OpenLayers.WPS.Process({identifier:identifier, title: ""});
-                this.addProcess(process);
-            }
+        try {
+            this.responseText = resp.responseText;
+            dom = resp.responseXML || OpenLayers.parseXMLString(resp.responseText);
+            this.responseDOM = dom;
 
-            process.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i],this.owsNS,  "Title")[0].firstChild.nodeValue;
-            process.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i],this.owsNS,  "Abstract")[0].firstChild.nodeValue;
-            process.version = OpenLayers.Format.XML.prototype.getAttributeNS(processes[i],this.wpsNS, "processVersion");
+            processes = dom.getElementsByTagName("ProcessDescription");
+            for (i = 0; i < processes.length; i = i + 1) {
+                identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Identifier")[0].firstChild.nodeValue;
+                process = this.getProcess(identifier);
 
-            /* parseInputs */
-            process.inputs = process.inputs.concat(process.inputs,
+                if (!process) {
+                    process = new OpenLayers.WPS.Process({identifier: identifier, title: ""});
+                    this.addProcess(process);
+                }
+
+                process.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Title")[0].firstChild.nodeValue;
+                process.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Abstract")[0].firstChild.nodeValue;
+                process.version = OpenLayers.Format.XML.prototype.getAttributeNS(processes[i], this.wpsNS, "processVersion");
+
+                /* parseInputs */
+                process.inputs = process.inputs.concat(process.inputs,
                         this.parseDescribePuts(processes[i].getElementsByTagName("Input")));
 
-            /* parseOutputs */
-            process.outputs = process.outputs.concat(process.outputs,
+                /* parseOutputs */
+                process.outputs = process.outputs.concat(process.outputs,
                         this.parseDescribePuts(processes[i].getElementsByTagName("Output")));
 
-            this.onDescribedProcess(process);
+                this.onDescribedProcess(process);
+            }
+
+        } catch (e) {
+            console.log(e);
         }
-        
-        }catch(e){console.log(e)}
     },
 
     /**
@@ -449,38 +478,38 @@ OpenLayers.WPS = OpenLayers.Class({
      * Returns
      * {List} of {OpenLayers.WPS.Put}
      */
-    parseDescribePuts: function(puts) {
-        var wpsputs = [];
-        for (var i = 0; i < puts.length; i++) {
+    parseDescribePuts: function (puts) {
+        'use strict';
+
+        var i, wpsputs, metadataDom, metadata;
+
+        wpsputs = [];
+        for (i = 0; i < puts.length; i = i + 1) {
             // inputs
             if (puts[i].getElementsByTagName("LiteralData").length > 0) {
                 wpsputs.push(this.parseDescribeLiteralPuts(puts[i]));
-            }
-            else if (puts[i].getElementsByTagName("ComplexData").length > 0) {
+            } else if (puts[i].getElementsByTagName("ComplexData").length > 0) {
                 wpsputs.push(this.parseDescribeComplexPuts(puts[i]));
-            }
-            else if (puts[i].getElementsByTagName("BoundingBoxData").length > 0) {
+            } else if (puts[i].getElementsByTagName("BoundingBoxData").length > 0) {
                 wpsputs.push(this.parseDescribeBoundingBoxPuts(puts[i]));
             }
 
             // outputs
             if (puts[i].getElementsByTagName("LiteralOutput").length > 0) {
                 wpsputs.push(this.parseDescribeLiteralPuts(puts[i]));
-            }
-            else if (puts[i].getElementsByTagName("ComplexOutput").length > 0) {
+            } else if (puts[i].getElementsByTagName("ComplexOutput").length > 0) {
                 wpsputs.push(this.parseDescribeComplexPuts(puts[i]));
-            }
-            else if (puts[i].getElementsByTagName("BoundingBoxOutput").length > 0) {
+            } else if (puts[i].getElementsByTagName("BoundingBoxOutput").length > 0) {
                 wpsputs.push(this.parseDescribeBoundingBoxPuts(puts[i]));
             }
 
             // metadata
-            var metadataDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(puts[i],this.owsNS,  "Metadata");
-            var metadata = {};
-            if (metadataDom.length>0) {
-                metadataDom[OpenLayers.Format.XML.prototype.getAttributeNS(metadataDom[i],this.xlinkNS, "title")] = metadataDom[i].firstChild.nodeValue;
+            metadataDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(puts[i], this.owsNS, "Metadata");
+            metadata = {};
+            if (metadataDom.length > 0) {
+                metadataDom[OpenLayers.Format.XML.prototype.getAttributeNS(metadataDom[i], this.xlinkNS, "title")] = metadataDom[i].firstChild.nodeValue;
             }
-            wpsputs[wpsputs.length-1].metadata = metadata;
+            wpsputs[wpsputs.length - 1].metadata = metadata;
         }
         return wpsputs;
     },
@@ -492,49 +521,54 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameters:
      * dom - {DOM}  input
      */
-    parseDescribeComplexPuts: function(dom){
-        var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Identifier")[0].firstChild.nodeValue;
-        var title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Title")[0].firstChild.nodeValue;
-        var abstract = null;
-        try {
-            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {}
+    parseDescribeComplexPuts: function (dom) {
+        'use strict';
 
-        var formats = [];
+        var i, identifier, title, abstract, formats, cmplxData, formatsNode, frmts, supportedFormats, format, asReference;
+
+        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
+        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
+        abstract = null;
+        try {
+            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
+        } catch(e) {
+        }
+
+        formats = [];
 
         // inputs
-        var cmplxData = dom.getElementsByTagName("ComplexData");
+        cmplxData = dom.getElementsByTagName("ComplexData");
         // outputs
         cmplxData = (cmplxData.length ? cmplxData : dom.getElementsByTagName("ComplexOutput"));
 
 
-	 if (cmplxData.length > 0) {
+        if (cmplxData.length > 0) {
             // default format first
-            var formatsNode = cmplxData[0].getElementsByTagName("Default")[0].getElementsByTagName("Format")[0];
-            var frmts = formatsNode.getElementsByTagName("MimeType")[0].firstChild.nodeValue;
+            formatsNode = cmplxData[0].getElementsByTagName("Default")[0].getElementsByTagName("Format")[0];
+            frmts = formatsNode.getElementsByTagName("MimeType")[0].firstChild.nodeValue;
             formats.push(frmts);
-            // all otheres afterwards
-            var supportedFormats = cmplxData[0].getElementsByTagName("Supported")[0].getElementsByTagName("Format");
-            for (var i = 0; i < supportedFormats.length; i++) {
-                var format = supportedFormats[i].getElementsByTagName("MimeType")[0].firstChild.nodeValue;
-                if (OpenLayers.WPS.Utils.isIn(formats,format) == false) {
+            // all others afterwards
+            supportedFormats = cmplxData[0].getElementsByTagName("Supported")[0].getElementsByTagName("Format");
+            for (i = 0; i < supportedFormats.length; i = i + 1) {
+                format = supportedFormats[i].getElementsByTagName("MimeType")[0].firstChild.nodeValue;
+                if (OpenLayers.WPS.Utils.isIn(formats, format) === false) {
                     formats.push(format);
                 }
             }
-	 }
+        }
 
 
-        var asReference = true;
+        asReference = true;
         if (formats[0].search("text") > -1) {
             asReference = false;
         }
         return new OpenLayers.WPS.ComplexPut({
-                    identifier: identifier,
-                    title: title,
-                    asReference: asReference,
-                    abstract:abstract,
-                    formats: formats
-                });
+            identifier: identifier,
+            title: title,
+            asReference: asReference,
+            abstract: abstract,
+            formats: formats
+        });
 
     },
 
@@ -545,41 +579,46 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameters:
      * dom - {DOM} input
      */
-    parseDescribeBoundingBoxPuts: function(dom){
-        var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Identifier")[0].firstChild.nodeValue;
-        var title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Title")[0].firstChild.nodeValue;
-        var abstract = null;
+    parseDescribeBoundingBoxPuts: function(dom) {
+        'use strict';
+
+        var i, identifier, title, abstract, crs, crss, domcrss, supported;
+
+        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
+        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
+        abstract = null;
         try {
-            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {}
-        var crss = [];
+            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
+        } catch(e) {
+        }
+        crss = [];
 
         // inputs
-        var domcrss = dom.getElementsByTagName("BoundingBoxData")[0];
+        domcrss = dom.getElementsByTagName("BoundingBoxData")[0];
         // outputs
         if (!domcrss) {
             domcrss = dom.getElementsByTagName("BoundingBoxOutput")[0];
         }
 
         // default first
-        crss.push(OpenLayers.Format.XML.prototype.getAttributeNS(domcrss.getElementsByTagName("Default")[0].getElementsByTagName("CRS")[0],this.xlinkNS,  "href"));
+        crss.push(OpenLayers.Format.XML.prototype.getAttributeNS(domcrss.getElementsByTagName("Default")[0].getElementsByTagName("CRS")[0], this.xlinkNS, "href"));
 
         // supported afterwards
-        var supported = domcrss.getElementsByTagName("Supported");
-        for (var i = 0; i < supported.length; i++) {
-            var crs = OpenLayers.Format.XML.prototype.getAttributeNS(supported[i].getElementsByTagName("CRS")[0],this.xlinkNS, xlink.wpsPref, "href");
-            if (OpenLayers.WPS.Utils.isIn(crss,crs) == false) {
+        supported = domcrss.getElementsByTagName("Supported");
+        for (i = 0; i < supported.length; i = i + 1) {
+            crs = OpenLayers.Format.XML.prototype.getAttributeNS(supported[i].getElementsByTagName("CRS")[0], this.xlinkNS, "href");
+            if (OpenLayers.WPS.Utils.isIn(crss, crs) === false) {
                 crss.push(crs);
             }
         }
 
 
         return new OpenLayers.WPS.BoundingBoxPut({
-                    identifier: identifier,
-                    title: title,
-                    abstract:abstract,
-                    crss: crss
-                });
+            identifier: identifier,
+            title: title,
+            abstract:abstract,
+            crss: crss
+        });
     },
 
     /**
@@ -589,57 +628,60 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameters:
      * dom - {DOM}  input
      */
-    parseDescribeLiteralPuts: function(dom){
+    parseDescribeLiteralPuts: function(dom) {
+        'use strict';
 
-        var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Identifier")[0].firstChild.nodeValue;
-        var title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Title")[0].firstChild.nodeValue;
-        var abstract = null;
+        var i, identifier, title, abstract, allowedValues, type, defaultValue, nodes, dataType, min, max;
+
+        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
+        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
+        abstract = null;
         try {
-            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {}
+            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
+        } catch(e) {
+        }
 
-        var allowedValues = [];
-        var type = "string";
-        var defaultValue = null;
-        var inputs = [];
-        
+        allowedValues = [];
+        type = "string";
+        defaultValue = null;
+
         // dataType
-        var dataType = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "DataType")[0];
+        dataType = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "DataType")[0];
         if (dataType) {
             type = dataType.firstChild.nodeValue.toLowerCase();
         }
         // anyValue
-        if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "AnyValue").length > 0){
+        if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "AnyValue").length > 0) {
             allowedValues = ["*"];
         }
         // allowedValues
-        else if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "AllowedValues").length > 0) {
-            var nodes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  
-                                    "AllowedValues")[0].childNodes;
+        else if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "AllowedValues").length > 0) {
+            nodes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS,
+                    "AllowedValues")[0].childNodes;
             // allowedValues
-            for (var i = 0; i < nodes.length; i++) {
-                if (nodes[i].nodeType != 1) { continue; } // skip text and comments
-                if (nodes[i].localName == "Value") {
-                    allowedValues.push(nodes[i].firstChild.nodeValue);
-                }
-                // range
-                else if (nodes[i].localName == "Range") {
-                    var min = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(nodes[i],this.owsNS,  "MinimumValue")[0].firstChild.nodeValue;
-                    var max = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(nodes[i],this.owsNS, "MaximumValue")[0].firstChild.nodeValue;
-                    allowedValues.push([min,max]);
+            for (i = 0; i < nodes.length; i = i + 1) {
+                if (nodes[i].nodeType === 1) { // skip text and comments
+                    if (nodes[i].localName === "Value") {
+                        allowedValues.push(nodes[i].firstChild.nodeValue);
+                    } else if (nodes[i].localName === "Range") {
+                        // range
+                        min = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(nodes[i], this.owsNS, "MinimumValue")[0].firstChild.nodeValue;
+                        max = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(nodes[i], this.owsNS, "MaximumValue")[0].firstChild.nodeValue;
+                        allowedValues.push([min,max]);
+                    }
                 }
             }
 
         }
 
         return new OpenLayers.WPS.LiteralPut({
-                identifier : identifier,
-                title : title,
-                abstract : abstract,
-                allowedValues : allowedValues,
-                type : type,
-                defaultValue : defaultValue
-        }); 
+            identifier : identifier,
+            title : title,
+            abstract : abstract,
+            allowedValues : allowedValues,
+            type : type,
+            defaultValue : defaultValue
+        });
     },
 
     /**
@@ -649,8 +691,9 @@ OpenLayers.WPS = OpenLayers.Class({
      * identifier
      */
     execute: function(identifier) {
+        'use strict';
 
-        if(this.executeUrlPost) {
+        if (this.executeUrlPost) {
             this.executePost(identifier);
         }
     },
@@ -660,65 +703,69 @@ OpenLayers.WPS = OpenLayers.Class({
      * Call Execute Request via HTTP POST
      *
      * Parameter:
-     * identifier - {String} 
+     * identifier - {String}
      */
     executePost : function(identifier) {
-        var uri = this.executeUrlPost
-        var process = this.getProcess(identifier);
+        'use strict';
 
-        var data = OpenLayers.WPS.executeRequestTemplate.replace("$IDENTIFIER$",identifier);
-        data = data.replace("$STORE_AND_STATUS$",process.assync);
+        var i, uri, process, data, inputs, input, tmpl, outputs, output, format, formatStr;
+
+        uri = this.executeUrlPost;
+        process = this.getProcess(identifier);
+
+        data = OpenLayers.WPS.executeRequestTemplate.replace("$IDENTIFIER$", identifier);
+        data = data.replace("$STORE_AND_STATUS$", process.assync);
 
         // inputs
-        var inputs = "";
-        for (var i  = 0; i < process.inputs.length; i++ ) {
-            var input = process.inputs[i];
-            var tmpl = "";
-            if (input.CLASS_NAME.search("Complex")>-1) {
+        inputs = "";
+        for (i = 0; i < process.inputs.length; i = i + 1) {
+            input = process.inputs[i];
+            tmpl = "";
+            if (input.CLASS_NAME.search("Complex") > -1) {
                 if (input.asReference) {
-                    tmpl = OpenLayers.WPS.complexInputReferenceTemplate.replace("$REFERENCE$",escape(input.getValue()));
+                    tmpl = OpenLayers.WPS.complexInputReferenceTemplate.replace("$REFERENCE$", encodeURI(input.getValue()));
                 }
                 else {
-                    tmpl = OpenLayers.WPS.complexInputDataTemplate.replace("$DATA$",input.getValue());
+                    tmpl = OpenLayers.WPS.complexInputDataTemplate.replace("$DATA$", input.getValue());
                 }
             }
             else if (input.CLASS_NAME.search("Literal") > -1) {
-                tmpl = OpenLayers.WPS.literalInputTemplate.replace("$DATA$",input.getValue());
+                tmpl = OpenLayers.WPS.literalInputTemplate.replace("$DATA$", input.getValue());
             }
             else if (input.CLASS_NAME.search("BoundingBox") > -1) {
-                tmpl = OpenLayers.WPS.boundingBoxInputTemplate.replace("$DIMENSIONS$",input.dimensions);
-                tmpl = tmpl.replace("$CRS$",input.crs);
-                tmpl = tmpl.replace("$MINX$",input.value.minx);
-                tmpl = tmpl.replace("$MINY$",input.value.miny);
-                tmpl = tmpl.replace("$MAXX$",input.value.maxx);
-                tmpl = tmpl.replace("$MAXY$",input.value.maxy);
+                tmpl = OpenLayers.WPS.boundingBoxInputTemplate.replace("$DIMENSIONS$", input.dimensions);
+                tmpl = tmpl.replace("$CRS$", input.crs);
+                tmpl = tmpl.replace("$MINX$", input.value.minx);
+                tmpl = tmpl.replace("$MINY$", input.value.miny);
+                tmpl = tmpl.replace("$MAXX$", input.value.maxx);
+                tmpl = tmpl.replace("$MAXY$", input.value.maxy);
             }
-            tmpl = tmpl.replace("$IDENTIFIER$",input.identifier);
+            tmpl = tmpl.replace("$IDENTIFIER$", input.identifier);
 
             inputs += tmpl;
         }
 
         // outputs
-        var outputs = "";
-        for (var i = 0; i < process.outputs.length; i++) {
-            var output = process.outputs[i];
-            var tmpl = "";
-            if (output.CLASS_NAME.search("Complex")>-1) {
-                tmpl = OpenLayers.WPS.complexOutputTemplate.replace("$AS_REFERENCE$",output.asReference);
-                var format = (output.format ? output.format : output.formats[0]);
-                var formatStr ="";
+        outputs = "";
+        for (i = 0; i < process.outputs.length; i = i + 1) {
+            output = process.outputs[i];
+            tmpl = "";
+            if (output.CLASS_NAME.search("Complex") > -1) {
+                tmpl = OpenLayers.WPS.complexOutputTemplate.replace("$AS_REFERENCE$", output.asReference);
+                format = (output.format || output.formats[0]);
+                formatStr = "";
                 if (format) {
                     if (format.mimeType) {
-                        formatStr += " mimeType=\""+format.mimeType+"\"";
+                        formatStr += " mimeType=\"" + format.mimeType + "\"";
                     }
                     if (format.schema) {
-                        formatStr += " schema=\""+format.schema+"\"";
+                        formatStr += " schema=\"" + format.schema + "\"";
                     }
                     if (format.encoding) {
-                        formatStr += " encoding=\""+format.encoding+"\"";
+                        formatStr += " encoding=\"" + format.encoding + "\"";
                     }
                 }
-                tmpl = tmpl.replace("$FORMAT$",formatStr);
+                tmpl = tmpl.replace("$FORMAT$", formatStr);
             }
             else if (output.CLASS_NAME.search("Literal") > -1) {
                 tmpl = OpenLayers.WPS.literalOutputTemplate;
@@ -726,14 +773,14 @@ OpenLayers.WPS = OpenLayers.Class({
             else if (output.CLASS_NAME.search("BoundingBox") > -1) {
                 tmpl = OpenLayers.WPS.boundingBoxOutputTemplate;
             }
-            tmpl = tmpl.replace("$IDENTIFIER$",output.identifier); 
+            tmpl = tmpl.replace("$IDENTIFIER$", output.identifier);
             outputs += tmpl;
         }
-        data = data.replace("$DATA_INPUTS$",inputs);
-        data = data.replace("$OUTPUT_DEFINITIONS$",outputs);
+        data = data.replace("$DATA_INPUTS$", inputs);
+        data = data.replace("$OUTPUT_DEFINITIONS$", outputs);
 
         this.requestText = data;
-        var request = OpenLayers.Request.POST({url:uri,data:data,success:this.parseExecute,failure:this.onException,scope:this});
+        OpenLayers.Request.POST({url: uri, data: data, success: this.parseExecute, failure: this.onException, scope: this});
     },
 
     /**
@@ -744,49 +791,54 @@ OpenLayers.WPS = OpenLayers.Class({
      * response - {XMLHTTP}
      */
     parseExecute: function(resp) {
-        var text = resp.responseText;
+        'use strict';
+
+        var i, text, dom, identifier, process, status, procOutputsDom, outputs;
+
+        text = resp.responseText;
         this.responseText = text;
-        if (OpenLayers.Util.getBrowserName() == "msie") {
+        if (OpenLayers.Util.getBrowserName() === "msie") {
             resp.responseXML = null;
-            text = text.replace(/<\?xml .[^>]*>/,"");
+            text = text.replace(/<\?xml .[^>]*>/, "");
         }
-        var dom = resp.responseXML ? resp.responseXML : OpenLayers.parseXMLString(text);
+        dom = resp.responseXML || OpenLayers.parseXMLString(text);
         this.responseDOM = dom;
         try {
-            this.statusLocation = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "ExecuteResponse")[0].getAttribute("statusLocation");
-        }
-        catch(e) {
+            this.statusLocation = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ExecuteResponse")[0].getAttribute("statusLocation");
+        } catch (e) {
             this.statusLocation = null;
         }
-        var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Identifier")[0].firstChild.nodeValue;
-        var process = this.getProcess(identifier);
-        var status = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "Status");
-        if (status.length > 0) { this.parseStatus(status[0]); }
+        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
+        process = this.getProcess(identifier);
+        status = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "Status");
+        if (status.length > 0) {
+            this.parseStatus(status[0]);
+        }
 
-        if (this.status == "ProcessSucceeded" || this.status == "ProcessStarted") {
-            var procOutputsDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "ProcessOutputs");
-            var outputs = null;
+        if (this.status === "ProcessSucceeded" || this.status === "ProcessStarted") {
+            procOutputsDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ProcessOutputs");
+            outputs = null;
             if (procOutputsDom.length) {
-                outputs = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(procOutputsDom[0],this.wpsNS,  "Output"); 
+                outputs = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(procOutputsDom[0], this.wpsNS, "Output");
             }
-            for (var i = 0; i < outputs.length; i++) {
-                this.parseExecuteOutput(process,outputs[i]);
+            for (i = 0; i < outputs.length; i = i + 1) {
+                this.parseExecuteOutput(process, outputs[i]);
             }
         }
-        else if (this.status == "ProcessFailed") {
-            this.parseProcessFailed(process,dom);
+        else if (this.status === "ProcessFailed") {
+            this.parseProcessFailed(process, dom);
         }
 
-        this.statusEvents[this.status].apply(this.scope,[process]);
-        this.onStatusChanged(this.status,process);
-        
-        if (this.status != "ProcessFailed" && this.status != "ProcessSucceeded") {
+        this.statusEvents[this.status].apply(this.scope, [process]);
+        this.onStatusChanged(this.status, process);
+
+        if (this.status !== "ProcessFailed" && this.status !== "ProcessSucceeded") {
             if (this.statusLocation) {
-                
-                window.setTimeout("OpenLayers.Request.GET({url:OpenLayers.WPS.instances["+this.id+"].statusLocation,"+
-                                "params:{salt:"+Math.random()+"},success: OpenLayers.WPS.instances["+this.id+"].parseExecute,"+
-                                "failure: OpenLayers.WPS.instances["+this.id+"].onException, "+
-                                "scope: OpenLayers.WPS.instances["+this.id+"]})", this.timeOut);
+
+                setTimeout("OpenLayers.Request.GET({url:OpenLayers.WPS.instances[" + this.id + "].statusLocation," +
+                        "params:{salt:" + Math.random() + "},success: OpenLayers.WPS.instances[" + this.id + "].parseExecute," +
+                        "failure: OpenLayers.WPS.instances[" + this.id + "].onException, " +
+                        "scope: OpenLayers.WPS.instances[" + this.id + "]})", this.timeOut);
             }
         }
         else {
@@ -806,19 +858,20 @@ OpenLayers.WPS = OpenLayers.Class({
      * process - {OpenLayers.WPS.Process} process, to which this output belongs to
      * dom - {DOMelement} <wps:Output />
      */
-    parseExecuteOutput: function(process,dom) {
-        var identifier  = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,  "Identifier")[0].firstChild.nodeValue;
+    parseExecuteOutput: function(process, dom) {
+        'use strict';
+        var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
         var output = process.getOutput(identifier);
-        var literalData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "LiteralData");
-        var complexData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "ComplexData");
-        var boundingBoxData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "BoundingBox");
-	var reference = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.wpsNS,  "Reference");
-	
+        var literalData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "LiteralData");
+        var complexData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ComplexData");
+        var boundingBoxData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "BoundingBox");
+        var reference = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "Reference");
 
-	if (reference.length > 0) {
-            output.setValue(OpenLayers.Format.XML.prototype.getAttributeNS(reference[0],this.xlinkNS, "href"));
+
+        if (reference.length > 0) {
+            output.setValue(OpenLayers.Format.XML.prototype.getAttributeNS(reference[0], this.xlinkNS, "href"));
         }
-        else if(literalData.length > 0) {
+        else if (literalData.length > 0) {
             output.setValue(literalData[0].firstChild.nodeValue);
         }
         else if (complexData.length > 0) {
@@ -829,21 +882,22 @@ OpenLayers.WPS = OpenLayers.Class({
                     output.setValue(node);
                 }
             }
-            // if output is still empty, try to fetch the text content 
+            // if output is still empty, try to fetch the text content
             if (!output.getValue()) {
                 output.setValue(complexData[0].textContent);
             }
         }
-        else if (boundingBoxData.length > 0 ) {
-	    var minxy; var maxxy;
-	    minxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData,this.owsNS,  "LowerCorner");
-	    maxxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData,this.owsNS,  "UpperCorner");
-	    var crs = boundingBoxData.getAttribute("crs");
-	    var dimensions = boundingBoxData.getAttribute("dimensions");
+        else if (boundingBoxData.length > 0) {
+            var minxy;
+            var maxxy;
+            minxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData, this.owsNS, "LowerCorner");
+            maxxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData, this.owsNS, "UpperCorner");
+            var crs = boundingBoxData.getAttribute("crs");
+            var dimensions = boundingBoxData.getAttribute("dimensions");
             output.setValue([minxy.split(" ")[0],minxy.split(" ")[1],
-			     maxxy.split(" ")[0],maxxy.split(" ")[1]]);
-	    output.dimensions = dimensions;
-	    output.crs = crs;
+                maxxy.split(" ")[0],maxxy.split(" ")[1]]);
+            output.dimensions = dimensions;
+            output.crs = crs;
         }
 
     },
@@ -857,7 +911,8 @@ OpenLayers.WPS = OpenLayers.Class({
      * creationTime - {String}
      * percentCompleted - {Float}
      */
-    setStatus: function(status,message,creationTime,percentCompleted) {
+    setStatus: function(status, message, creationTime, percentCompleted) {
+        'use strict';
 
         this.status = status;
         this.statusMessage = message;
@@ -872,13 +927,14 @@ OpenLayers.WPS = OpenLayers.Class({
      * status - {dom}
      */
     parseStatus: function(status) {
+        'use strict';
         for (var k in this.statusEvents) {
-            var dom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(status,this.wpsNS,  k);
-            if (dom.length>0) {
+            var dom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(status, this.wpsNS, k);
+            if (dom.length > 0) {
                 this.setStatus(k,
-                            dom[0].firstChild.nodeValue,
-                            status.getAttribute("creationTime"),
-                            dom[0].getAttribute("percentCompleted"));
+                        dom[0].firstChild.nodeValue,
+                        status.getAttribute("creationTime"),
+                        dom[0].getAttribute("percentCompleted"));
             }
         }
     },
@@ -906,16 +962,17 @@ OpenLayers.WPS = OpenLayers.Class({
 
     /**
      * Method: parseProcessFailed
-     * 
+     *
      */
-    parseProcessFailed: function(process,dom) {
-        var Exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,"Exception");
+    parseProcessFailed: function(process, dom) {
+        'use strict';
+        var Exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Exception");
         var code;
         if (Exception.length) {
             code = Exception[0].getAttribute('exceptionCode');
         }
         var text;
-        var ExceptionText = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom,this.owsNS,"ExceptionText");
+        var ExceptionText = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "ExceptionText");
         if (ExceptionText.length) {
             try {
                 text = ExceptionText[0].firstChild.nodeValue;
@@ -931,6 +988,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * To be redefined by the user
      */
     onStarted: function(process) {
+        'use strict';
     },
 
     /**
@@ -938,6 +996,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * To be redefined by the user
      */
     onPaused: function(process) {
+        'use strict';
     },
 
     /**
@@ -952,7 +1011,8 @@ OpenLayers.WPS = OpenLayers.Class({
      * {Process}
      */
     getProcess: function(identifier) {
-        
+        'use strict';
+
         for (var i = 0; i < this.processes.length; i++) {
             if (this.processes[i].identifier == identifier) {
                 return this.processes[i];
@@ -966,7 +1026,8 @@ OpenLayers.WPS = OpenLayers.Class({
      * Called, when some exception occured
      *
      */
-    onException: function (process,code,text) {
+    onException: function (process, code, text) {
+        'use strict';
     },
 
     /**
@@ -974,6 +1035,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * To be redefined by the user
      */
     onGotCapabilities: function() {
+        'use strict';
 
     },
 
@@ -985,6 +1047,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * process
      */
     onDescribedProcess: function(process) {
+        'use strict';
 
     },
 
@@ -993,10 +1056,11 @@ OpenLayers.WPS = OpenLayers.Class({
      * To be redefined by the user
      *
      * Parameters:
-     * status 
+     * status
      * process
      */
-    onStatusChanged: function(status,process) {
+    onStatusChanged: function(status, process) {
+        'use strict';
 
     },
 
@@ -1016,31 +1080,34 @@ OpenLayers.WPS.Utils = {
      * Returns:
      * {String} new URL
      */
-    extendUrl: function(source,newParams) {
-        var sourceBase = source.split("?")[0];
+    extendUrl: function(source, newParams) {
+        'use strict';
+
+        var i, sourceBase, sourceParamsList, sourceParams, key, value, newParamsString;
+
+        sourceBase = source.split("?")[0];
         try {
-            var sourceParamsList = source.split("?")[1].split("&");
+            sourceParamsList = source.split("?")[1].split("&");
         }
         catch (e) {
-            var sourceParamsList = [];
+            sourceParamsList = [];
         }
-        var sourceParams = {};
+        sourceParams = {};
 
-        for (var i = 0; i < sourceParamsList.length; i++) {
-            var key; var value;
+        for (i = 0; i < sourceParamsList.length; i = i + 1) {
             key = sourceParamsList[i].split('=')[0];
             value = sourceParamsList[i].split('=')[1];
-            if (key && value ) {
+            if (key && value) {
                 sourceParams[key] = value;
             }
         }
         newParams = OpenLayers.Util.extend(newParams, sourceParams);
 
-        var newParamsString = "";
-        for (var key in newParams) {
-            newParamsString += "&"+key+"="+newParams[key];
+        newParamsString = "";
+        for (key in newParams) {
+            newParamsString += "&" + key + "=" + newParams[key];
         }
-        return sourceBase+"?"+newParamsString;
+        return sourceBase + "?" + newParamsString;
     },
 
     /**
@@ -1049,14 +1116,15 @@ OpenLayers.WPS.Utils = {
      *
      * Parameters:
      * list - {Array}
-     * elem - {Object} 
+     * elem - {Object}
      *
      * Returns:
      * {Boolean} whether the element is in the list or not
      */
     isIn  : function(list, elem) {
+        'use strict';
         var obj = {};
-        for(var i = 0; i <list.length;i++) {
+        for (var i = 0; i < list.length; i++) {
             obj[list[i]] = null;
         }
         return elem in obj;
@@ -1074,7 +1142,7 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * {String}
      */
     identifier:  null,
-    
+
     /**
      * Property: title
      * {String}
@@ -1135,17 +1203,17 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * Parameters:
      * options   {Object}
      */
-    initialize: function(options) {
-        this.identifier=  null;
-        this.title= null;
-        this.abstract= null;
+    initialize: function (options) {
+        this.identifier = null;
+        this.title = null;
+        this.abstract = null;
         this.inputs = [];
         this.exception = [];
         this.outputs = [];
-        this.metadata= {};
-        this.version= null;
-        this.status= false;
-        this.wps= null;
+        this.metadata = {};
+        this.version = null;
+        this.status = false;
+        this.wps = null;
         OpenLayers.Util.extend(this, options);
     },
 
@@ -1164,7 +1232,7 @@ OpenLayers.WPS.Process = OpenLayers.Class({
     /**
      * Method: execute
      */
-    execute :  function(){
+    execute :  function() {
         this.wps.execute(this.identifier);
     },
 
@@ -1178,7 +1246,7 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * {Object} input
      */
     getInput: function(identifier) {
-        for (var i = 0; i < this.inputs.length;i++) {
+        for (var i = 0; i < this.inputs.length; i++) {
             if (this.inputs[i].identifier == identifier) {
                 return this.inputs[i];
             }
@@ -1196,7 +1264,7 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * {Object} output
      */
     getOutput: function(identifier) {
-        for (var i = 0; i < this.outputs.length;i++) {
+        for (var i = 0; i < this.outputs.length; i++) {
             if (this.outputs[i].identifier == identifier) {
                 return this.outputs[i];
             }
@@ -1268,7 +1336,7 @@ OpenLayers.WPS.Put = OpenLayers.Class({
  * Class:   OpenLayers.WPS.LiteralPut
  * Base Class for LiteralData In- and Outputs
  */
-OpenLayers.WPS.LiteralPut = OpenLayers.Class(OpenLayers.WPS.Put,{
+OpenLayers.WPS.LiteralPut = OpenLayers.Class(OpenLayers.WPS.Put, {
     allowedValues:[],
     defaultValue: null,
     type: null,
@@ -1279,7 +1347,7 @@ OpenLayers.WPS.LiteralPut = OpenLayers.Class(OpenLayers.WPS.Put,{
  * Class:   OpenLayers.WPS.ComplexPut
  * Base Class for ComplexData In- and Outputs
  */
-OpenLayers.WPS.ComplexPut = OpenLayers.Class(OpenLayers.WPS.Put,{
+OpenLayers.WPS.ComplexPut = OpenLayers.Class(OpenLayers.WPS.Put, {
     asReference:false,
     formats:[],
     format:{},
@@ -1290,7 +1358,7 @@ OpenLayers.WPS.ComplexPut = OpenLayers.Class(OpenLayers.WPS.Put,{
  * Class:   OpenLayers.WPS.BoundingBoxPut
  * Base Class for BoundingBoxData In- and Outputs
  */
-OpenLayers.WPS.BoundingBoxPut = OpenLayers.Class(OpenLayers.WPS.Put,{
+OpenLayers.WPS.BoundingBoxPut = OpenLayers.Class(OpenLayers.WPS.Put, {
     dimensions:2,
     crss: null,
     value: {minx: null,miny:null, maxx: null,maxy:null,bottom:null, top:null},
@@ -1299,95 +1367,95 @@ OpenLayers.WPS.BoundingBoxPut = OpenLayers.Class(OpenLayers.WPS.Put,{
 
 /**
  * Property:    executeRequestTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
-OpenLayers.WPS.executeRequestTemplate = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-                                 '<wps:Execute service="WPS" version="1.0.0" '+
-                                 'xmlns:wps="http://www.opengis.net/wps/1.0.0" '+
-                                 'xmlns:ows="http://www.opengis.net/ows/1.1" '+
-                                 'xmlns:xlink="http://www.w3.org/1999/xlink" '+
-                                 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '+
-                                 'xsi:schemaLocation="http://www.opengis.net/wps/1.0.0/wpsExecute_request.xsd">'+
-                                 '<ows:Identifier>$IDENTIFIER$</ows:Identifier>'+
-                                '<wps:DataInputs>'+
-                                "$DATA_INPUTS$"+
-                                '</wps:DataInputs>'+
-                                '<wps:ResponseForm>'+
-                                '<wps:ResponseDocument wps:lineage="false" '+
-                                'storeExecuteResponse="true" '+
-                                'status="$STORE_AND_STATUS$">'+
-                                "$OUTPUT_DEFINITIONS$"+
-                                '</wps:ResponseDocument>'+
-                                '</wps:ResponseForm>'+
-                                '</wps:Execute>';
+OpenLayers.WPS.executeRequestTemplate = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<wps:Execute service="WPS" version="1.0.0" ' +
+        'xmlns:wps="http://www.opengis.net/wps/1.0.0" ' +
+        'xmlns:ows="http://www.opengis.net/ows/1.1" ' +
+        'xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+        'xsi:schemaLocation="http://www.opengis.net/wps/1.0.0/wpsExecute_request.xsd">' +
+        '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
+        '<wps:DataInputs>' +
+        "$DATA_INPUTS$" +
+        '</wps:DataInputs>' +
+        '<wps:ResponseForm>' +
+        '<wps:ResponseDocument wps:lineage="false" ' +
+        'storeExecuteResponse="true" ' +
+        'status="$STORE_AND_STATUS$">' +
+        "$OUTPUT_DEFINITIONS$" +
+        '</wps:ResponseDocument>' +
+        '</wps:ResponseForm>' +
+        '</wps:Execute>';
 
 /**
  * Property:    literalInputTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
-OpenLayers.WPS.literalInputTemplate  = "<wps:Input>"+
-                                "<ows:Identifier>$IDENTIFIER$</ows:Identifier>"+
-                                "<wps:Data>"+
-				"<wps:LiteralData>$DATA$</wps:LiteralData>"+
-                                "</wps:Data>"+
-                                "</wps:Input>";
+OpenLayers.WPS.literalInputTemplate = "<wps:Input>" +
+        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+        "<wps:Data>" +
+        "<wps:LiteralData>$DATA$</wps:LiteralData>" +
+        "</wps:Data>" +
+        "</wps:Input>";
 
 /**
  * Property:    complexInputReferenceTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
-OpenLayers.WPS.complexInputReferenceTemplate = "<wps:Input>"+
-                                "<ows:Identifier>$IDENTIFIER$</ows:Identifier>"+
-                                "<wps:Data>"+
-                                '<wps:Reference xlink:href="$REFERENCE$"/>'+
-                                "</wps:Data>"+
-                                "</wps:Input>";
+OpenLayers.WPS.complexInputReferenceTemplate = "<wps:Input>" +
+        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+        "<wps:Data>" +
+        '<wps:Reference xlink:href="$REFERENCE$"/>' +
+        "</wps:Data>" +
+        "</wps:Input>";
 
 /**
  * Property:    complexInputDataTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
-OpenLayers.WPS.complexInputDataTemplate = "<wps:Input>"+
-                                "<ows:Identifier>$IDENTIFIER$</ows:Identifier>"+
-                                "<wps:Data>"+
-				"<wps:ComplexData>"+
-                                "$DATA$"+
-				"</wps:ComplexData>"+
-                                "</wps:Data>"+
-                                "</wps:Input>";
+OpenLayers.WPS.complexInputDataTemplate = "<wps:Input>" +
+        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+        "<wps:Data>" +
+        "<wps:ComplexData>" +
+        "$DATA$" +
+        "</wps:ComplexData>" +
+        "</wps:Data>" +
+        "</wps:Input>";
 /**
  * Property:    boundingBoxInputTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
-OpenLayers.WPS.boundingBoxInputTemplate = "<wps:Input>"+
-                                "<ows:Identifier>$IDENTIFIER$</ows:Identifier>"+
-                                "<wps:Data>"+
-				'<wps:BoundingBoxData ows:dimensions="$DIMENSIONS$" ows:crs="$CRS$">'+
-                                "<ows:LowerCorner>$MINX$ $MINY$</ows:LowerCorner>"+
-                                "<ows:UpperCorner>$MAXX$ $MAXY$</ows:UpperCorner>"+
-				"</wps:BoundingBoxData>"+
-                                "</wps:Data>"+
-                                "</wps:Input>";
+OpenLayers.WPS.boundingBoxInputTemplate = "<wps:Input>" +
+        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+        "<wps:Data>" +
+        '<wps:BoundingBoxData ows:dimensions="$DIMENSIONS$" ows:crs="$CRS$">' +
+        "<ows:LowerCorner>$MINX$ $MINY$</ows:LowerCorner>" +
+        "<ows:UpperCorner>$MAXX$ $MAXY$</ows:UpperCorner>" +
+        "</wps:BoundingBoxData>" +
+        "</wps:Data>" +
+        "</wps:Input>";
 
 /**
  * Property:    complexOutputTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
-OpenLayers.WPS.complexOutputTemplate = '<wps:Output asReference="$AS_REFERENCE$" $FORMAT$>'+
-                                '<ows:Identifier>$IDENTIFIER$</ows:Identifier>'+
-                                "</wps:Output>";
+OpenLayers.WPS.complexOutputTemplate = '<wps:Output asReference="$AS_REFERENCE$" $FORMAT$>' +
+        '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
+        "</wps:Output>";
 
 /**
  * Property:    literalOutputTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
-OpenLayers.WPS.literalOutputTemplate = '<wps:Output asReference="false">'+
-                                '<ows:Identifier>$IDENTIFIER$</ows:Identifier>'+
-                                '</wps:Output>';
+OpenLayers.WPS.literalOutputTemplate = '<wps:Output asReference="false">' +
+        '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
+        '</wps:Output>';
 
 /**
  * Property:    boundingBoxOutputTemplate
- * {String} Temple for Execute Request XML 
+ * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.boundingBoxOutputTemplate = OpenLayers.WPS.literalOutputTemplate;
 
