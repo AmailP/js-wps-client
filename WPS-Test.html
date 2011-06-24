@@ -1,0 +1,47 @@
+<html>
+    <head>
+        <script src="http://yui.yahooapis.com/3.3.0/build/yui/yui-min.js" charset="utf-8"></script>
+        <script src="http://openlayers.org/api/OpenLayers.js" charset="utf-8"></script>
+        <script src="WPS.js" charset="utf-8"></script>
+        <script type="text/javascript">
+            YUI({ logInclude: { TestRunner: true } }).use('test', 'console', function (Y) {
+
+                var testCase = new Y.Test.Case({
+
+                    name: "TestCase Name",
+
+                    //traditional test names
+                    testUtils : function () {
+
+                        //test IsIN
+                        var array = ["one", "two", "three"];
+                        Y.assert(OpenLayers.WPS.Utils.isIn(array, "two"));
+                        Y.Assert.isFalse(OpenLayers.WPS.Utils.isIn(array, "hundred"));
+                        
+                    },
+
+                    testSomethingElse : function () {
+                        Y.Assert.isFalse(false);
+                    }
+                });
+
+                Y.Test.Runner.add(testCase);
+
+                //initialize the console
+                var yconsole = new Y.Console({
+                    newestOnTop: false,
+                    width: "640px",
+                    height: "480px"
+                });
+                yconsole.render('#log');
+
+                //run all tests
+                Y.Test.Runner.run();
+
+            })
+        </script>
+    </head>
+    <body  class="yui3-skin-sam">
+        <div id="log"></div>
+    </body>
+</html>

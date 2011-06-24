@@ -28,7 +28,7 @@
  *  - a lot
  */
 
-/*global OpenLayers: true, console: true */
+/*global OpenLayers: true, console: true, window: true */
 
 /**
  * Class: OpenLayers.WPS
@@ -793,7 +793,7 @@ OpenLayers.WPS = OpenLayers.Class({
     parseExecute: function(resp) {
         'use strict';
 
-        var i, text, dom, identifier, process, status, procOutputsDom, outputs;
+        var i, text, dom, identifier, process, status, procOutputsDom, outputs, getRequest, inst;
 
         text = resp.responseText;
         this.responseText = text;
@@ -835,15 +835,29 @@ OpenLayers.WPS = OpenLayers.Class({
         if (this.status !== "ProcessFailed" && this.status !== "ProcessSucceeded") {
             if (this.statusLocation) {
 
-                setTimeout("OpenLayers.Request.GET({url:OpenLayers.WPS.instances[" + this.id + "].statusLocation," +
-                        "params:{salt:" + Math.random() + "},success: OpenLayers.WPS.instances[" + this.id + "].parseExecute," +
-                        "failure: OpenLayers.WPS.instances[" + this.id + "].onException, " +
-                        "scope: OpenLayers.WPS.instances[" + this.id + "]})", this.timeOut);
+//                window.setTimeout("OpenLayers.Request.GET({url:OpenLayers.WPS.instances[" + this.id + "].statusLocation," +
+//                        "params:{salt:" + Math.random() + "},success: OpenLayers.WPS.instances[" + this.id + "].parseExecute," +
+//                        "failure: OpenLayers.WPS.instances[" + this.id + "].onException, " +
+//                        "scope: OpenLayers.WPS.instances[" + this.id + "]})", this.timeOut);
+
+                getRequest = function (id) {
+                    OpenLayers.Request.GET({
+                        url: OpenLayers.WPS.instances[id].statusLocation,
+                        params: { salt: Math.random() },
+                        success: OpenLayers.WPS.instances[id].parseExecute,
+                        failure: OpenLayers.WPS.instances[id].onException,
+                        scope: OpenLayers.WPS.instances[id]
+                    });
+                };
+
+                window.setTimeout(getRequest, this.timeOut, this.id);
             }
         }
         else {
-            for (var inst in OpenLayers.WPS.instances) {
-                OpenLayers.WPS.instances[inst] = null;
+            for (inst in OpenLayers.WPS.instances) {
+                if (OpenLayers.WPS.instances.hasOwnProperty(inst)) {
+                    OpenLayers.WPS.instances[inst] = null;
+                }
             }
             OpenLayers.WPS.instances = [];
         }
@@ -860,12 +874,15 @@ OpenLayers.WPS = OpenLayers.Class({
      */
     parseExecuteOutput: function(process, dom) {
         'use strict';
-        var identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
-        var output = process.getOutput(identifier);
-        var literalData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "LiteralData");
-        var complexData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ComplexData");
-        var boundingBoxData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "BoundingBox");
-        var reference = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "Reference");
+
+        var i, identifier, output, literalData, complexData, boundingBoxData, reference, node, minxy, maxxy, crs, dimensions;
+
+        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
+        output = process.getOutput(identifier);
+        literalData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "LiteralData");
+        complexData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ComplexData");
+        boundingBoxData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "BoundingBox");
+        reference = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "Reference");
 
 
         if (reference.length > 0) {
@@ -876,9 +893,9 @@ OpenLayers.WPS = OpenLayers.Class({
         }
         else if (complexData.length > 0) {
             // set output do DOM
-            for (var i = 0; i < complexData[0].childNodes.length; i++) {
-                var node = complexData[0].childNodes[i];
-                if (node.nodeType == 1) {
+            for (i = 0; i < complexData[0].childNodes.length; i = i + 1) {
+                node = complexData[0].childNodes[i];
+                if (node.nodeType === 1) {
                     output.setValue(node);
                 }
             }
@@ -888,14 +905,11 @@ OpenLayers.WPS = OpenLayers.Class({
             }
         }
         else if (boundingBoxData.length > 0) {
-            var minxy;
-            var maxxy;
             minxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData, this.owsNS, "LowerCorner");
             maxxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData, this.owsNS, "UpperCorner");
-            var crs = boundingBoxData.getAttribute("crs");
-            var dimensions = boundingBoxData.getAttribute("dimensions");
-            output.setValue([minxy.split(" ")[0],minxy.split(" ")[1],
-                maxxy.split(" ")[0],maxxy.split(" ")[1]]);
+            crs = boundingBoxData.getAttribute("crs");
+            dimensions = boundingBoxData.getAttribute("dimensions");
+            output.setValue([minxy.split(" ")[0], minxy.split(" ")[1], maxxy.split(" ")[0], maxxy.split(" ")[1]]);
             output.dimensions = dimensions;
             output.crs = crs;
         }
@@ -928,13 +942,18 @@ OpenLayers.WPS = OpenLayers.Class({
      */
     parseStatus: function(status) {
         'use strict';
-        for (var k in this.statusEvents) {
-            var dom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(status, this.wpsNS, k);
-            if (dom.length > 0) {
-                this.setStatus(k,
-                        dom[0].firstChild.nodeValue,
-                        status.getAttribute("creationTime"),
-                        dom[0].getAttribute("percentCompleted"));
+
+        var k, dom;
+
+        for (k in this.statusEvents) {
+            if(this.statusEvents.hasOwnProperty(k)) {
+                dom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(status, this.wpsNS, k);
+                if (dom.length > 0) {
+                    this.setStatus(k,
+                            dom[0].firstChild.nodeValue,
+                            status.getAttribute("creationTime"),
+                            dom[0].getAttribute("percentCompleted"));
+                }
             }
         }
     },
@@ -944,6 +963,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * To be redefined by the user
      */
     onAccepted: function(process) {
+        'use strict';
     },
 
     /**
@@ -951,6 +971,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * To be redefined by the user
      */
     onSucceeded: function(process) {
+        'use strict';
     },
 
     /**
@@ -958,6 +979,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * To be redefined by the user
      */
     onFailed: function(process) {
+        'use strict';
     },
 
     /**
@@ -966,13 +988,14 @@ OpenLayers.WPS = OpenLayers.Class({
      */
     parseProcessFailed: function(process, dom) {
         'use strict';
-        var Exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Exception");
-        var code;
+
+        var Exception, code, text, ExceptionText;
+
+        Exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Exception");
         if (Exception.length) {
             code = Exception[0].getAttribute('exceptionCode');
         }
-        var text;
-        var ExceptionText = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "ExceptionText");
+        ExceptionText = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "ExceptionText");
         if (ExceptionText.length) {
             try {
                 text = ExceptionText[0].firstChild.nodeValue;
@@ -980,7 +1003,7 @@ OpenLayers.WPS = OpenLayers.Class({
                 text = '';
             }
         }
-        process.exception = {code:code,text:text};
+        process.exception = {code: code, text: text};
     },
 
     /**
@@ -1013,8 +1036,10 @@ OpenLayers.WPS = OpenLayers.Class({
     getProcess: function(identifier) {
         'use strict';
 
-        for (var i = 0; i < this.processes.length; i++) {
-            if (this.processes[i].identifier == identifier) {
+        var i;
+
+        for (i = 0; i < this.processes.length; i = i + 1) {
+            if (this.processes[i].identifier === identifier) {
                 return this.processes[i];
             }
         }
@@ -1105,7 +1130,9 @@ OpenLayers.WPS.Utils = {
 
         newParamsString = "";
         for (key in newParams) {
-            newParamsString += "&" + key + "=" + newParams[key];
+            if(newParams.hasOwnProperty(key)) {
+                newParamsString += "&" + key + "=" + newParams[key];
+            }
         }
         return sourceBase + "?" + newParamsString;
     },
@@ -1123,11 +1150,8 @@ OpenLayers.WPS.Utils = {
      */
     isIn  : function(list, elem) {
         'use strict';
-        var obj = {};
-        for (var i = 0; i < list.length; i++) {
-            obj[list[i]] = null;
-        }
-        return elem in obj;
+
+        return list.indexOf(elem) !== -1;
     }
 };
 
@@ -1204,6 +1228,8 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * options   {Object}
      */
     initialize: function (options) {
+        'use strict';
+
         this.identifier = null;
         this.title = null;
         this.abstract = null;
@@ -1221,18 +1247,21 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * Method: addInput
      */
     addInput : function(params) {
+        'use strict';
     },
 
     /**
      * Method: addOutput
      */
     addOutput : function(params) {
+        'use strict';
     },
 
     /**
      * Method: execute
      */
     execute :  function() {
+        'use strict';
         this.wps.execute(this.identifier);
     },
 
@@ -1246,8 +1275,12 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * {Object} input
      */
     getInput: function(identifier) {
-        for (var i = 0; i < this.inputs.length; i++) {
-            if (this.inputs[i].identifier == identifier) {
+        'use strict';
+
+        var i;
+
+        for (i = 0; i < this.inputs.length; i = i + 1) {
+            if (this.inputs[i].identifier === identifier) {
                 return this.inputs[i];
             }
         }
@@ -1264,8 +1297,12 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * {Object} output
      */
     getOutput: function(identifier) {
-        for (var i = 0; i < this.outputs.length; i++) {
-            if (this.outputs[i].identifier == identifier) {
+        'use strict';
+
+        var i;
+
+        for (i = 0; i < this.outputs.length; i = i + 1) {
+            if (this.outputs[i].identifier === identifier) {
                 return this.outputs[i];
             }
         }
@@ -1312,6 +1349,7 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      * options
      */
     initialize: function(options) {
+        'use strict';
         OpenLayers.Util.extend(this, options);
     },
 
@@ -1319,6 +1357,7 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      * Method:  setValue
      */
     setValue: function(value) {
+        'use strict';
         this.value = value;
     },
 
@@ -1326,6 +1365,7 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      * Method:  getValue
      */
     getValue: function() {
+        'use strict';
         return this.value;
     },
 
