@@ -277,8 +277,8 @@ OpenLayers.WPS = OpenLayers.Class({
      */
     getCapabilitiesGet : function (url) {
         'use strict';
-        if (url) {
-            this.getCapabilitiesUrlGet = url;
+        if (!url) {
+            url = this.getCapabilitiesUrlGet;
         }
         var uri = OpenLayers.WPS.Utils.extendUrl(url, {service: this.service, version: this.version, request: "GetCapabilities"});
 
@@ -377,6 +377,7 @@ OpenLayers.WPS = OpenLayers.Class({
         }
 
         // processes
+        this.processes = [];
         processesNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ProcessOfferings")[0];
         processes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processesNode, this.wpsNS, "Process");
         for (i = 0; i < processes.length; i = i + 1) {
@@ -431,16 +432,17 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeProcess: function (resp) {
         'use strict';
 
-        var i, dom, processes, identifier, process;
+        var i, dom, processElements, identifier, process, processElement;
 
         try {
             this.responseText = resp.responseText;
             dom = resp.responseXML || OpenLayers.parseXMLString(resp.responseText);
             this.responseDOM = dom;
 
-            processes = dom.getElementsByTagName("ProcessDescription");
-            for (i = 0; i < processes.length; i = i + 1) {
-                identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Identifier")[0].firstChild.nodeValue;
+            processElements = dom.getElementsByTagName("ProcessDescription");
+            for (i = 0; i < processElements.length; i = i + 1) {
+                processElement = processElements[i];
+                identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processElement, this.owsNS, "Identifier")[0].firstChild.nodeValue;
                 process = this.getProcess(identifier);
 
                 if (!process) {
@@ -448,17 +450,15 @@ OpenLayers.WPS = OpenLayers.Class({
                     this.addProcess(process);
                 }
 
-                process.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Title")[0].firstChild.nodeValue;
-                process.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Abstract")[0].firstChild.nodeValue;
-                process.version = OpenLayers.Format.XML.prototype.getAttributeNS(processes[i], this.wpsNS, "processVersion");
+                process.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processElement, this.owsNS, "Title")[0].firstChild.nodeValue;
+                process.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processElement, this.owsNS, "Abstract")[0].firstChild.nodeValue;
+                process.version = OpenLayers.Format.XML.prototype.getAttributeNS(processElement, this.wpsNS, "processVersion");
 
                 /* parseInputs */
-                process.inputs = process.inputs.concat(process.inputs,
-                        this.parseDescribePuts(processes[i].getElementsByTagName("Input")));
+                process.inputs = this.parseDescribePuts(processElement.getElementsByTagName("Input"));
 
                 /* parseOutputs */
-                process.outputs = process.outputs.concat(process.outputs,
-                        this.parseDescribePuts(processes[i].getElementsByTagName("Output")));
+                process.outputs = this.parseDescribePuts(processElement.getElementsByTagName("Output"));
 
                 this.onDescribedProcess(process);
             }
