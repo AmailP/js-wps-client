@@ -735,7 +735,7 @@ OpenLayers.WPS = OpenLayers.Class({
         process = this.getProcess(identifier);
 
         data = OpenLayers.WPS.executeRequestTemplate.replace("$IDENTIFIER$", identifier);
-        data = data.replace("$STORE_AND_STATUS$", process.assync);
+        data = data.replace("$STORE_AND_STATUS$", this.assync);
 
         // inputs
         inputs = "";
