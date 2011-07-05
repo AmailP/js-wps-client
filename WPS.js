@@ -517,7 +517,7 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeCommonPuts: function (dom) {
         'use strict';
 
-        var i, identifier, title, abstract, minOccurs, maxOccurs;
+        var i, identifier, title, abstract, minOccurs, maxOccurs, attribute;
 
         identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
         title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
@@ -527,8 +527,14 @@ OpenLayers.WPS = OpenLayers.Class({
         } catch(e) {
         }
 
-        minOccurs = dom.attributes.getNamedItem("minOccurs").value;
-        maxOccurs = dom.attributes.getNamedItem("maxOccurs").value;
+
+        if(dom.attributes.getNamedItem("minOccurs")) {
+            minOccurs = Number(dom.attributes.getNamedItem("minOccurs").value);
+        }
+
+        if(dom.attributes.getNamedItem("maxOccurs")) {
+            minOccurs = Number(dom.attributes.getNamedItem("maxOccurs").value);
+        }
 
         return {
             identifier: identifier,
@@ -808,7 +814,7 @@ OpenLayers.WPS = OpenLayers.Class({
     parseExecute: function(resp) {
         'use strict';
 
-        var i, text, dom, identifier, process, status, procOutputsDom, outputs, getRequest, inst;
+        var i, text, dom, identifier, process, status, procOutputsDom, outputs, getRequest, exception, exceptionCode, locator, text;
 
         text = resp.responseText;
         this.responseText = text;
@@ -817,6 +823,16 @@ OpenLayers.WPS = OpenLayers.Class({
             text = text.replace(/<\?xml .[^>]*>/, "");
         }
         dom = resp.responseXML || OpenLayers.parseXMLString(text);
+
+        if(OpenLayers.Format.XML.prototype.getChildEl(dom).localName === "ExceptionReport") {
+            exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Exception")[0];
+            exceptionCode = exception.getAttribute("exceptionCode");
+            locator = exception.getAttribute("locator");
+            text = OpenLayers.Format.XML.prototype.getChildValue(exception, '');
+            this.onException(null, exceptionCode, "Locator: " + locator + "\n\nText:" + text);
+            return;
+        }
+
         this.responseDOM = dom;
         try {
             this.statusLocation = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ExecuteResponse")[0].getAttribute("statusLocation");
@@ -839,9 +855,9 @@ OpenLayers.WPS = OpenLayers.Class({
             for (i = 0; i < outputs.length; i = i + 1) {
                 this.parseExecuteOutput(process, outputs[i]);
             }
-        }
-        else if (this.status === "ProcessFailed") {
+        } else if (this.status === "ProcessFailed") {
             this.parseProcessFailed(process, dom);
+            this.onFailed(process)
         }
 
         this.statusEvents[this.status].apply(this.scope, [process]);
@@ -849,11 +865,6 @@ OpenLayers.WPS = OpenLayers.Class({
 
         if (this.status !== "ProcessFailed" && this.status !== "ProcessSucceeded") {
             if (this.statusLocation) {
-
-//                window.setTimeout("OpenLayers.Request.GET({url:OpenLayers.WPS.instances[" + this.id + "].statusLocation," +
-//                        "params:{salt:" + Math.random() + "},success: OpenLayers.WPS.instances[" + this.id + "].parseExecute," +
-//                        "failure: OpenLayers.WPS.instances[" + this.id + "].onException, " +
-//                        "scope: OpenLayers.WPS.instances[" + this.id + "]})", this.timeOut);
 
                 getRequest = function (id) {
                     OpenLayers.Request.GET({
@@ -1357,13 +1368,13 @@ OpenLayers.WPS.Put = OpenLayers.Class({
     value: null,
 
      /**
-     * Property:    value
+     * Property:    maxOccurs
      * {Number}
      */
     maxOccurs: null,
 
          /**
-     * Property:    value
+     * Property:    minOccurs
      * {Number}
      */
     minOccurs: null,
@@ -1394,6 +1405,13 @@ OpenLayers.WPS.Put = OpenLayers.Class({
     getValue: function() {
         'use strict';
         return this.value;
+    },
+
+     /**
+     * Method:  isRequired
+     */
+    isRequired: function() {
+        return this.minOccurs > 0;
     },
 
     CLASS_NAME: "OpenLayers.WPS.Put"
