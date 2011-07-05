@@ -514,6 +514,32 @@ OpenLayers.WPS = OpenLayers.Class({
         return wpsputs;
     },
 
+    parseDescribeCommonPuts: function (dom) {
+        'use strict';
+
+        var i, identifier, title, abstract, minOccurs, maxOccurs;
+
+        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
+        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
+        abstract = null;
+        try {
+            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
+        } catch(e) {
+        }
+
+        minOccurs = dom.attributes.getNamedItem("minOccurs").value;
+        maxOccurs = dom.attributes.getNamedItem("maxOccurs").value;
+
+        return {
+            identifier: identifier,
+            title: title,
+            abstract: abstract,
+            minOccurs: minOccurs,
+            maxOccurs: maxOccurs
+        };
+
+    },
+
     /**
      * Method: parseDescribeComplexPuts
      * Parse ComplexValue elements
@@ -524,15 +550,9 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeComplexPuts: function (dom) {
         'use strict';
 
-        var i, identifier, title, abstract, formats, cmplxData, formatsNode, frmts, supportedFormats, format, asReference;
+        var i, commons, formats, cmplxData, formatsNode, frmts, supportedFormats, format, asReference;
 
-        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
-        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
-        abstract = null;
-        try {
-            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {
-        }
+        commons = this.parseDescribeCommonPuts(dom);
 
         formats = [];
 
@@ -563,10 +583,12 @@ OpenLayers.WPS = OpenLayers.Class({
             asReference = false;
         }
         return new OpenLayers.WPS.ComplexPut({
-            identifier: identifier,
-            title: title,
+            identifier: commons.identifier,
+            title: commons.title,
+            minOccurs: commons.minOccurs,
+            maxOccurs: commons.maxOccurs,
             asReference: asReference,
-            abstract: abstract,
+            abstract: commons.abstract,
             formats: formats
         });
 
@@ -582,15 +604,10 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeBoundingBoxPuts: function(dom) {
         'use strict';
 
-        var i, identifier, title, abstract, crs, crss, domcrss, supported;
+        var i, commons, crs, crss, domcrss, supported;
 
-        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
-        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
-        abstract = null;
-        try {
-            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {
-        }
+        commons = this.parseDescribeCommonPuts(dom);
+
         crss = [];
 
         // inputs
@@ -614,9 +631,11 @@ OpenLayers.WPS = OpenLayers.Class({
 
 
         return new OpenLayers.WPS.BoundingBoxPut({
-            identifier: identifier,
-            title: title,
-            abstract:abstract,
+            identifier: commons.identifier,
+            title: commons.title,
+            minOccurs: commons.minOccurs,
+            maxOccurs: commons.maxOccurs,
+            abstract: commons.abstract,
             crss: crss
         });
     },
@@ -631,15 +650,9 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeLiteralPuts: function(dom) {
         'use strict';
 
-        var i, identifier, title, abstract, allowedValues, type, defaultValue, nodes, dataType, min, max;
+        var i, commons, allowedValues, type, defaultValue, nodes, dataType, min, max;
 
-        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
-        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
-        abstract = null;
-        try {
-            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {
-        }
+        commons = this.parseDescribeCommonPuts(dom);
 
         allowedValues = [];
         type = "string";
@@ -675,9 +688,11 @@ OpenLayers.WPS = OpenLayers.Class({
         }
 
         return new OpenLayers.WPS.LiteralPut({
-            identifier : identifier,
-            title : title,
-            abstract : abstract,
+            identifier: commons.identifier,
+            title: commons.title,
+            minOccurs: commons.minOccurs,
+            maxOccurs: commons.maxOccurs,
+            abstract : commons.abstract,
             allowedValues : allowedValues,
             type : type,
             defaultValue : defaultValue
@@ -1340,6 +1355,18 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      * {Object}
      */
     value: null,
+
+     /**
+     * Property:    value
+     * {Number}
+     */
+    maxOccurs: null,
+
+         /**
+     * Property:    value
+     * {Number}
+     */
+    minOccurs: null,
 
     /**
      * Constructor:    initialize
