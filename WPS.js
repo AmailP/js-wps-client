@@ -879,14 +879,14 @@ OpenLayers.WPS = OpenLayers.Class({
                 window.setTimeout(getRequest, this.timeOut, this.id);
             }
         }
-        else {
-            for (inst in OpenLayers.WPS.instances) {
-                if (OpenLayers.WPS.instances.hasOwnProperty(inst)) {
-                    OpenLayers.WPS.instances[inst] = null;
-                }
-            }
-            OpenLayers.WPS.instances = [];
-        }
+//        else {
+//            for (inst in OpenLayers.WPS.instances) {
+//                if (OpenLayers.WPS.instances.hasOwnProperty(inst)) {
+//                    OpenLayers.WPS.instances[inst] = null;
+//                }
+//            }
+//            OpenLayers.WPS.instances = [];
+//        }
     },
 
     /**
