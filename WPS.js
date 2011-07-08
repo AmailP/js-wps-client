@@ -237,17 +237,12 @@ OpenLayers.WPS = OpenLayers.Class({
         this.describeProcessUrlPost = url;
         this.executeUrlPost = url;
 
-        OpenLayers.Util.extend(this, options);
-
         /* if (this.getCapabilitiesUrlGet) {
          this.getCapabilitiesGet(this.getCapabilitiesUrlGet);
          }
          */
 
         this.wpsNS += this.version;
-
-        OpenLayers.WPS.instances.push(this);
-        this.id = OpenLayers.WPS.instances.length - 1;
 
         this.statusEvents = {
             "ProcessAccepted": this.onAccepted,
@@ -867,27 +862,21 @@ OpenLayers.WPS = OpenLayers.Class({
         if (this.status !== "ProcessFailed" && this.status !== "ProcessSucceeded") {
             if (this.statusLocation) {
 
+                that = this;
+
                 getRequest = function (id) {
                     OpenLayers.Request.GET({
-                        url: OpenLayers.WPS.instances[id].statusLocation,
+                        url: that.statusLocation,
                         params: { salt: Math.random() },
-                        success: OpenLayers.WPS.instances[id].parseExecute,
-                        failure: OpenLayers.WPS.instances[id].onException,
-                        scope: OpenLayers.WPS.instances[id]
+                        success: that.parseExecute,
+                        failure: that.onException,
+                        scope: that
                     });
                 };
 
                 window.setTimeout(getRequest, this.timeOut, this.id);
             }
         }
-//        else {
-//            for (inst in OpenLayers.WPS.instances) {
-//                if (OpenLayers.WPS.instances.hasOwnProperty(inst)) {
-//                    OpenLayers.WPS.instances[inst] = null;
-//                }
-//            }
-//            OpenLayers.WPS.instances = [];
-//        }
     },
 
     /**
