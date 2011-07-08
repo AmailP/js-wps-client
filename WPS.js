@@ -860,7 +860,8 @@ OpenLayers.WPS = OpenLayers.Class({
     parseExecute: function(resp) {
         'use strict';
 
-        var i, text, dom, identifier, process, status, procOutputsDom, outputs, getRequest, exception, exceptionCode, locator, text;
+        var i, that, text, dom, identifier, process, status, procOutputsDom, outputs, getRequest, exception;
+        var exceptionCode, locator, exceptionText, exceptionTextEl = "";
 
         text = resp.responseText;
         this.responseText = text;
@@ -870,12 +871,16 @@ OpenLayers.WPS = OpenLayers.Class({
         }
         dom = resp.responseXML || OpenLayers.parseXMLString(text);
 
-        if(OpenLayers.Format.XML.prototype.getChildEl(dom).localName === "ExceptionReport") {
+        if (OpenLayers.Format.XML.prototype.getChildEl(dom).localName === "ExceptionReport") {
             exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Exception")[0];
             exceptionCode = exception.getAttribute("exceptionCode");
             locator = exception.getAttribute("locator");
-            text = OpenLayers.Format.XML.prototype.getChildValue(exception, '');
-            this.onException(null, exceptionCode, "Locator: " + locator + "\n\nText:" + text);
+            exceptionTextEl = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(exception, this.owsNS, "ExceptionText");
+            if (exceptionTextEl.length > 0) {
+                exceptionText = OpenLayers.Format.XML.prototype.getChildValue(exceptionTextEl[0]);
+            }
+
+            this.onException(null, exceptionCode, "Locator: " + locator + "\n\nText:" + exceptionText);
             return;
         }
 
@@ -903,9 +908,9 @@ OpenLayers.WPS = OpenLayers.Class({
             }
         } else if (this.status === "ProcessFailed") {
             this.parseProcessFailed(process, dom);
-            this.onFailed(process)
         }
 
+        // call to the correct "onStatus" user defined function
         this.statusEvents[this.status].apply(this.scope, [process]);
         this.onStatusChanged(this.status, process);
 
