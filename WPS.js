@@ -1017,13 +1017,13 @@ OpenLayers.WPS = OpenLayers.Class({
         var k, dom;
 
         for (k in this.statusEvents) {
-            if(this.statusEvents.hasOwnProperty(k)) {
+            if (this.statusEvents.hasOwnProperty(k)) {
                 dom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(status, this.wpsNS, k);
                 if (dom.length > 0) {
                     this.setStatus(k,
-                            dom[0].firstChild.nodeValue,
-                            status.getAttribute("creationTime"),
-                            dom[0].getAttribute("percentCompleted"));
+                        dom[0].firstChild.nodeValue,
+                        status.getAttribute("creationTime"),
+                        dom[0].getAttribute("percentCompleted"));
                 }
             }
         }
@@ -1201,7 +1201,7 @@ OpenLayers.WPS.Utils = {
 
         newParamsString = "";
         for (key in newParams) {
-            if(newParams.hasOwnProperty(key)) {
+            if (newParams.hasOwnProperty(key)) {
                 newParamsString += "&" + key + "=" + newParams[key];
             }
         }
@@ -1671,9 +1671,3 @@ OpenLayers.WPS.literalOutputTemplate = '<wps:Output asReference="false">' +
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.boundingBoxOutputTemplate = OpenLayers.WPS.literalOutputTemplate;
-
-/**
- * Property:    OpenLayers.WPS.instances
- * {List} running instances of WPS
- */
-OpenLayers.WPS.instances = [];
