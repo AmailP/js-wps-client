@@ -638,7 +638,8 @@ OpenLayers.WPS = OpenLayers.Class({
             minOccurs: commons.minOccurs,
             maxOccurs: commons.maxOccurs,
             abstract: commons.abstract,
-            crss: crss
+            crss: crss,
+            values: []
         });
     },
 
@@ -697,7 +698,8 @@ OpenLayers.WPS = OpenLayers.Class({
             abstract : commons.abstract,
             allowedValues : allowedValues,
             type : type,
-            defaultValue : defaultValue
+            defaultValue : defaultValue,
+            values: []
         });
     },
 
@@ -741,13 +743,32 @@ OpenLayers.WPS = OpenLayers.Class({
     executePost : function(identifier, parameters) {
         'use strict';
 
-        var i, uri, process, data, inputs, input, tmpl, outputs, output, format, formatStr;
+        var i, uri, process, data, inputs, input, tmpl, outputs, output, format, formatStr, applyTemplate, encodeAmpersands, bboxes;
 
         uri = this.executeUrlPost;
         process = this.getProcess(identifier);
 
         data = OpenLayers.WPS.executeRequestTemplate.replace("$IDENTIFIER$", identifier);
-        data = data.replace("$STORE_AND_STATUS$", this.assync);
+
+        applyTemplate = function (template, pattern, filter) {
+            var result;
+            if (!filter) {
+                filter = function (x) {
+                    return x;
+                }
+            }
+            result = this.map(
+                function (value) {
+                    return template.replace(pattern, filter(value))
+                }).reduce(function(value, previous) {
+                    return value + previous;
+                });
+            return result;
+        }
+
+        encodeAmpersands = function(value) {
+            return value.replace(/&/g, "&amp;");
+        }
 
         // inputs
         inputs = "";
@@ -756,24 +777,39 @@ OpenLayers.WPS = OpenLayers.Class({
             tmpl = "";
             if (input.CLASS_NAME.search("Complex") > -1) {
                 if (input.asReference) {
-                    tmpl = OpenLayers.WPS.complexInputReferenceTemplate.replace("$REFERENCE$", encodeURI(input.getValue()));
+                    tmpl = applyTemplate.call(input.getValues(), OpenLayers.WPS.complexInputReferenceTemplate, "$REFERENCE$", encodeURI);
                 }
                 else {
-                    tmpl = OpenLayers.WPS.complexInputDataTemplate.replace("$DATA$", input.getValue());
+                    tmpl = applyTemplate.call(input.getValues(), OpenLayers.WPS.complexInputDataTemplate, "$DATA$");
                 }
             }
             else if (input.CLASS_NAME.search("Literal") > -1) {
-                tmpl = OpenLayers.WPS.literalInputTemplate.replace("$DATA$", input.getValue());
+                tmpl = applyTemplate.call(input.getValues(), OpenLayers.WPS.literalInputTemplate, "$DATA$", encodeAmpersands);
             }
             else if (input.CLASS_NAME.search("BoundingBox") > -1) {
-                tmpl = OpenLayers.WPS.boundingBoxInputTemplate.replace("$DIMENSIONS$", input.dimensions);
-                tmpl = tmpl.replace("$CRS$", input.crs);
-                tmpl = tmpl.replace("$MINX$", input.value.minx);
-                tmpl = tmpl.replace("$MINY$", input.value.miny);
-                tmpl = tmpl.replace("$MAXX$", input.value.maxx);
-                tmpl = tmpl.replace("$MAXY$", input.value.maxy);
+
+                bboxes = input.getValues().map(function (value) {
+                    var patterns = [
+                        ["$DIMENSIONS$", input.dimensions],
+                        ["$CRS$", input.crs],
+                        ["$MINX$", value.minx],
+                        ["$MINY$", value.miny],
+                        ["$MAXX$", value.maxx],
+                        ["$MAXY$", value.maxy]
+                    ];
+
+                    return patterns.reduce(
+                        function (previous, pattern) {
+                            return previous.replace(pattern[0], pattern[1]);
+                        },
+                        OpenLayers.WPS.boundingBoxInputTemplate);
+                });
+
+                tmpl = bboxes.reduce(function(previous, value) {
+                    return previous + value
+                });
             }
-            tmpl = tmpl.replace("$IDENTIFIER$", input.identifier);
+            tmpl = tmpl.replace(/\$IDENTIFIER\$/g, input.identifier);
 
             inputs += tmpl;
         }
@@ -1374,7 +1410,7 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      * Property:    value
      * {Object}
      */
-    value: null,
+    values: [],
 
     /**
      * Property:    maxOccurs
@@ -1402,21 +1438,47 @@ OpenLayers.WPS.Put = OpenLayers.Class({
 
     /**
      * Method:  setValue
+     *
+     * utility method to set the first value
      */
     setValue: function(value) {
         'use strict';
-        this.value = value;
+        this.values[0] = value;
+    },
+
+    /**
+     * Method:  setValues
+     *
+     * utility method to set the first value
+     */
+    setValues: function(value) {
+        'use strict';
+        this.values = value;
     },
 
     /**
      * Method:  getValue
+     *
+     * utility method to get the first value
      */
     getValue: function() {
         'use strict';
-        return this.value;
+        if (this.values.length > 0) {
+            return this.values[0];
+        } else {
+            return undefined;
+        }
     },
 
-     /**
+    /**
+     * Method:  getValues
+     */
+    getValues: function() {
+        'use strict';
+        return this.values;
+    },
+
+    /**
      * Method:  isRequired
      */
     isRequired: function() {
@@ -1424,6 +1486,61 @@ OpenLayers.WPS.Put = OpenLayers.Class({
     },
 
     CLASS_NAME: "OpenLayers.WPS.Put"
+});
+
+OpenLayers.WPS.Format = OpenLayers.Class({
+    /**
+     * Property:    mimeType
+     * {String}
+     */
+    mimeType:  null,
+
+    /**
+     * Property:    schema
+     * {String}
+     */
+    schema: null,
+
+     /**
+     * Property:    encoding
+     * {String}
+     */
+    encoding: null,
+
+    /**
+     * Property:    abstract
+     * {String}
+     */
+    initialize: function (mimeType, schema, encoding) {
+
+        this.mimeType = mimeType;
+
+        this.schema = schema;
+
+        this.encoding = encoding;
+    },
+
+    equals: function(other) {
+        return this.mimeType === other.mimeType && this.schema === other.schema && this.encoding === other.encoding ;
+    },
+
+    parseFormat: function(formatNode) {
+        var mimeType, schemaEl, schema, encodingEl, encoding;
+        //mimeType is mandatory in the standard
+        mimeType = formatNode.getElementsByTagName("MimeType")[0].firstChild.nodeValue;
+
+        schemaEl = formatNode.getElementsByTagName("Schema");
+        if (schemaEl.length > 0) {
+            schema = schemaEl[0].firstChild.nodeValue;
+        }
+
+        encodingEl = formatNode.getElementsByTagName("Schema");
+        if (encodingEl.length > 0) {
+            encoding = encodingEl[0].firstChild.nodeValue;
+        }
+
+        return new OpenLayers.WPS.Format(mimeType, schema, encoding) ;
+    }
 });
 
 /**
