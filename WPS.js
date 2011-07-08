@@ -357,18 +357,18 @@ OpenLayers.WPS = OpenLayers.Class({
             }
 
             switch (operationName.toLowerCase()) {
-            case "getcapabilities":
-                this.getCapabilitiesUrlGet = getURL;
-                this.getCapabilitiesUrlPost = postURL;
-                break;
-            case "describeprocess":
-                this.describeProcessUrlGet = getURL;
-                this.describeProcessUrlPost = postURL;
-                break;
-            case "execute":
-                this.executeUrlGet = getURL;
-                this.executeUrlPost = postURL;
-                break;
+                case "getcapabilities":
+                    this.getCapabilitiesUrlGet = getURL;
+                    this.getCapabilitiesUrlPost = postURL;
+                    break;
+                case "describeprocess":
+                    this.describeProcessUrlGet = getURL;
+                    this.describeProcessUrlPost = postURL;
+                    break;
+                case "execute":
+                    this.executeUrlGet = getURL;
+                    this.executeUrlPost = postURL;
+                    break;
             }
         }
 
@@ -524,11 +524,11 @@ OpenLayers.WPS = OpenLayers.Class({
         }
 
 
-        if(dom.attributes.getNamedItem("minOccurs")) {
+        if (dom.attributes.getNamedItem("minOccurs")) {
             minOccurs = Number(dom.attributes.getNamedItem("minOccurs").value);
         }
 
-        if(dom.attributes.getNamedItem("maxOccurs")) {
+        if (dom.attributes.getNamedItem("maxOccurs")) {
             minOccurs = Number(dom.attributes.getNamedItem("maxOccurs").value);
         }
 
@@ -672,7 +672,7 @@ OpenLayers.WPS = OpenLayers.Class({
         // allowedValues
         else if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "AllowedValues").length > 0) {
             nodes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS,
-                    "AllowedValues")[0].childNodes;
+                "AllowedValues")[0].childNodes;
             // allowedValues
             for (i = 0; i < nodes.length; i = i + 1) {
                 if (nodes[i].nodeType === 1) { // skip text and comments
@@ -1357,13 +1357,13 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      */
     value: null,
 
-     /**
+    /**
      * Property:    maxOccurs
      * {Number}
      */
     maxOccurs: null,
 
-         /**
+    /**
      * Property:    minOccurs
      * {Number}
      */
@@ -1434,9 +1434,11 @@ OpenLayers.WPS.ComplexPut = OpenLayers.Class(OpenLayers.WPS.Put, {
  * Base Class for BoundingBoxData In- and Outputs
  */
 OpenLayers.WPS.BoundingBoxPut = OpenLayers.Class(OpenLayers.WPS.Put, {
-    dimensions:2,
+    dimensions: 2,
     crss: null,
-    value: {minx: null,miny:null, maxx: null,maxy:null,bottom:null, top:null},
+    values: [
+        {minx: null, miny: null, maxx: null, maxy: null, bottom: null, top: null}
+    ],
     CLASS_NAME: "OpenLayers.WPS.BoundingBoxPut"
 });
 
@@ -1469,64 +1471,64 @@ OpenLayers.WPS.executeRequestTemplate = '<?xml version="1.0" encoding="UTF-8" st
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.literalInputTemplate = "<wps:Input>" +
-        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
-        "<wps:Data>" +
-        "<wps:LiteralData>$DATA$</wps:LiteralData>" +
-        "</wps:Data>" +
-        "</wps:Input>";
+    "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+    "<wps:Data>" +
+    "<wps:LiteralData>$DATA$</wps:LiteralData>" +
+    "</wps:Data>" +
+    "</wps:Input>";
 
 /**
  * Property:    complexInputReferenceTemplate
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.complexInputReferenceTemplate = "<wps:Input>" +
-        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
-        "<wps:Data>" +
-        '<wps:Reference xlink:href="$REFERENCE$"/>' +
-        "</wps:Data>" +
-        "</wps:Input>";
+    "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+    "<wps:Data>" +
+    '<wps:Reference xlink:href="$REFERENCE$"/>' +
+    "</wps:Data>" +
+    "</wps:Input>";
 
 /**
  * Property:    complexInputDataTemplate
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.complexInputDataTemplate = "<wps:Input>" +
-        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
-        "<wps:Data>" +
-        "<wps:ComplexData>" +
-        "$DATA$" +
-        "</wps:ComplexData>" +
-        "</wps:Data>" +
-        "</wps:Input>";
+    "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+    "<wps:Data>" +
+    "<wps:ComplexData>" +
+    "$DATA$" +
+    "</wps:ComplexData>" +
+    "</wps:Data>" +
+    "</wps:Input>";
 /**
  * Property:    boundingBoxInputTemplate
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.boundingBoxInputTemplate = "<wps:Input>" +
-        "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
-        "<wps:Data>" +
-        '<wps:BoundingBoxData ows:dimensions="$DIMENSIONS$" ows:crs="$CRS$">' +
-        "<ows:LowerCorner>$MINX$ $MINY$</ows:LowerCorner>" +
-        "<ows:UpperCorner>$MAXX$ $MAXY$</ows:UpperCorner>" +
-        "</wps:BoundingBoxData>" +
-        "</wps:Data>" +
-        "</wps:Input>";
+    "<ows:Identifier>$IDENTIFIER$</ows:Identifier>" +
+    "<wps:Data>" +
+    '<wps:BoundingBoxData ows:dimensions="$DIMENSIONS$" ows:crs="$CRS$">' +
+    "<ows:LowerCorner>$MINX$ $MINY$</ows:LowerCorner>" +
+    "<ows:UpperCorner>$MAXX$ $MAXY$</ows:UpperCorner>" +
+    "</wps:BoundingBoxData>" +
+    "</wps:Data>" +
+    "</wps:Input>";
 
 /**
  * Property:    complexOutputTemplate
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.complexOutputTemplate = '<wps:Output asReference="$AS_REFERENCE$" $FORMAT$>' +
-        '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
-        "</wps:Output>";
+    '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
+    "</wps:Output>";
 
 /**
  * Property:    literalOutputTemplate
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.literalOutputTemplate = '<wps:Output asReference="false">' +
-        '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
-        '</wps:Output>';
+    '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
+    '</wps:Output>';
 
 /**
  * Property:    boundingBoxOutputTemplate
