@@ -1,8 +1,9 @@
 /**
- * Author:      Jachym Cepicky <jachym les-ejk cz>
- *              http://les-ejk.cz
+ * Authors:     Jachym Cepicky <jachym les-ejk cz>
+ *              Valerio Angelini <amailp gmail com>
+ *
  * Purpose:     Generic WPS Client for JavaScript programming language
- * Version:     0.0.1
+ * Version:     0.0.2
  * Supported WPS Versions: 1.0.0
  *
  * The Library is designed to work with OpenLayers [http://openlayers.org]
