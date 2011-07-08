@@ -707,11 +707,27 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameter:
      * identifier
      */
-    execute: function(identifier) {
+    execute: function(identifier, parameters) {
         'use strict';
 
+        var errorMessage;
+
+        parameters = parameters || {};
+
+        // Setting parameters defaults
+        parameters.responseForm = parameters.responseForm || "ResponseDocument";
+        parameters.storeExecuteResponse = parameters.storeExecuteResponse || "false";
+        parameters.lineage = parameters.lineage || "false";
+        parameters.status = parameters.status || "false";
+
+        if (parameters.responseForm != "ResponseDocument") {
+            errorMessage = "The " + parameters.responseForm + " response form is not currently supported.";
+            onException(this.getProcess(identifier), "NoApplicableCode", errorMessage);
+            return;
+        }
+
         if (this.executeUrlPost) {
-            this.executePost(identifier);
+            this.executePost(identifier, parameters);
         }
     },
 
@@ -722,7 +738,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameter:
      * identifier - {String}
      */
-    executePost : function(identifier) {
+    executePost : function(identifier, parameters) {
         'use strict';
 
         var i, uri, process, data, inputs, input, tmpl, outputs, output, format, formatStr;
@@ -763,6 +779,9 @@ OpenLayers.WPS = OpenLayers.Class({
         }
 
         // outputs
+        data = data.replace("$LINEAGE$", parameters.lineage);
+        data = data.replace("$STORE$", parameters.storeExecuteResponse);
+        data = data.replace("$STATUS$", parameters.status);
         outputs = "";
         for (i = 0; i < process.outputs.length; i = i + 1) {
             output = process.outputs[i];
@@ -1447,24 +1466,24 @@ OpenLayers.WPS.BoundingBoxPut = OpenLayers.Class(OpenLayers.WPS.Put, {
  * {String} Temple for Execute Request XML
  */
 OpenLayers.WPS.executeRequestTemplate = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-        '<wps:Execute service="WPS" version="1.0.0" ' +
-        'xmlns:wps="http://www.opengis.net/wps/1.0.0" ' +
-        'xmlns:ows="http://www.opengis.net/ows/1.1" ' +
-        'xmlns:xlink="http://www.w3.org/1999/xlink" ' +
-        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-        'xsi:schemaLocation="http://www.opengis.net/wps/1.0.0/wpsExecute_request.xsd">' +
-        '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
-        '<wps:DataInputs>' +
-        "$DATA_INPUTS$" +
-        '</wps:DataInputs>' +
-        '<wps:ResponseForm>' +
-        '<wps:ResponseDocument wps:lineage="false" ' +
-        'storeExecuteResponse="true" ' +
-        'status="$STORE_AND_STATUS$">' +
-        "$OUTPUT_DEFINITIONS$" +
-        '</wps:ResponseDocument>' +
-        '</wps:ResponseForm>' +
-        '</wps:Execute>';
+    '<wps:Execute service="WPS" version="1.0.0" ' +
+    'xmlns:wps="http://www.opengis.net/wps/1.0.0" ' +
+    'xmlns:ows="http://www.opengis.net/ows/1.1" ' +
+    'xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+    'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+    'xsi:schemaLocation="http://www.opengis.net/wps/1.0.0/wpsExecute_request.xsd">' +
+    '<ows:Identifier>$IDENTIFIER$</ows:Identifier>' +
+    '<wps:DataInputs>' +
+    "$DATA_INPUTS$" +
+    '</wps:DataInputs>' +
+    '<wps:ResponseForm>' +
+    '<wps:ResponseDocument wps:lineage="$LINEAGE$" ' +
+    'storeExecuteResponse="$STORE$" ' +
+    'status="$STATUS$">' +
+    "$OUTPUT_DEFINITIONS$" +
+    '</wps:ResponseDocument>' +
+    '</wps:ResponseForm>' +
+    '</wps:Execute>';
 
 /**
  * Property:    literalInputTemplate
