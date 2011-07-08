@@ -357,18 +357,18 @@ OpenLayers.WPS = OpenLayers.Class({
             }
 
             switch (operationName.toLowerCase()) {
-            case "getcapabilities":
-                this.getCapabilitiesUrlGet = getURL;
-                this.getCapabilitiesUrlPost = postURL;
-                break;
-            case "describeprocess":
-                this.describeProcessUrlGet = getURL;
-                this.describeProcessUrlPost = postURL;
-                break;
-            case "execute":
-                this.executeUrlGet = getURL;
-                this.executeUrlPost = postURL;
-                break;
+                case "getcapabilities":
+                    this.getCapabilitiesUrlGet = getURL;
+                    this.getCapabilitiesUrlPost = postURL;
+                    break;
+                case "describeprocess":
+                    this.describeProcessUrlGet = getURL;
+                    this.describeProcessUrlPost = postURL;
+                    break;
+                case "execute":
+                    this.executeUrlGet = getURL;
+                    this.executeUrlPost = postURL;
+                    break;
             }
         }
 
@@ -524,11 +524,11 @@ OpenLayers.WPS = OpenLayers.Class({
         }
 
 
-        if(dom.attributes.getNamedItem("minOccurs")) {
+        if (dom.attributes.getNamedItem("minOccurs")) {
             minOccurs = Number(dom.attributes.getNamedItem("minOccurs").value);
         }
 
-        if(dom.attributes.getNamedItem("maxOccurs")) {
+        if (dom.attributes.getNamedItem("maxOccurs")) {
             minOccurs = Number(dom.attributes.getNamedItem("maxOccurs").value);
         }
 
@@ -672,7 +672,7 @@ OpenLayers.WPS = OpenLayers.Class({
         // allowedValues
         else if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "AllowedValues").length > 0) {
             nodes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS,
-                    "AllowedValues")[0].childNodes;
+                "AllowedValues")[0].childNodes;
             // allowedValues
             for (i = 0; i < nodes.length; i = i + 1) {
                 if (nodes[i].nodeType === 1) { // skip text and comments
@@ -1357,13 +1357,13 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      */
     value: null,
 
-     /**
+    /**
      * Property:    maxOccurs
      * {Number}
      */
     maxOccurs: null,
 
-         /**
+    /**
      * Property:    minOccurs
      * {Number}
      */
