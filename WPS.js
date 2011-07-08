@@ -552,7 +552,7 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeComplexPuts: function (dom) {
         'use strict';
 
-        var i, commons, formats, cmplxData, formatsNode, frmts, supportedFormats, format, asReference;
+        var i, commons, formats, cmplxData, formatsNode, defaultFormatTmp, defaultFormat, supportedFormats, format;
 
         commons = this.parseDescribeCommonPuts(dom);
 
@@ -563,35 +563,30 @@ OpenLayers.WPS = OpenLayers.Class({
         // outputs
         cmplxData = (cmplxData.length ? cmplxData : dom.getElementsByTagName("ComplexOutput"));
 
-
         if (cmplxData.length > 0) {
-            // default format first
+            // read default format first
             formatsNode = cmplxData[0].getElementsByTagName("Default")[0].getElementsByTagName("Format")[0];
-            frmts = formatsNode.getElementsByTagName("MimeType")[0].firstChild.nodeValue;
-            formats.push(frmts);
+            defaultFormatTmp = OpenLayers.WPS.Format.prototype.parseFormat(formatsNode);
             // all others afterwards
             supportedFormats = cmplxData[0].getElementsByTagName("Supported")[0].getElementsByTagName("Format");
             for (i = 0; i < supportedFormats.length; i = i + 1) {
-                format = supportedFormats[i].getElementsByTagName("MimeType")[0].firstChild.nodeValue;
-                if (OpenLayers.WPS.Utils.isIn(formats, format) === false) {
-                    formats.push(format);
+                format = OpenLayers.WPS.Format.prototype.parseFormat(supportedFormats[i]);
+                formats.push(format);
+                if(format.equals(defaultFormatTmp)) {
+                    defaultFormat = format;
                 }
             }
         }
 
-
-        asReference = true;
-        if (formats[0].search("text") > -1) {
-            asReference = false;
-        }
         return new OpenLayers.WPS.ComplexPut({
             identifier: commons.identifier,
             title: commons.title,
             minOccurs: commons.minOccurs,
             maxOccurs: commons.maxOccurs,
-            asReference: asReference,
             abstract: commons.abstract,
-            formats: formats
+            formats: formats,
+            defaultFormat: defaultFormat,
+            values: []
         });
 
     },
@@ -824,7 +819,7 @@ OpenLayers.WPS = OpenLayers.Class({
             tmpl = "";
             if (output.CLASS_NAME.search("Complex") > -1) {
                 tmpl = OpenLayers.WPS.complexOutputTemplate.replace("$AS_REFERENCE$", output.asReference);
-                format = (output.format || output.formats[0]);
+                format = output.defaultFormat; // TODO support also the use of not default formats
                 formatStr = "";
                 if (format) {
                     if (format.mimeType) {
@@ -1559,9 +1554,9 @@ OpenLayers.WPS.LiteralPut = OpenLayers.Class(OpenLayers.WPS.Put, {
  * Base Class for ComplexData In- and Outputs
  */
 OpenLayers.WPS.ComplexPut = OpenLayers.Class(OpenLayers.WPS.Put, {
-    asReference:false,
-    formats:[],
-    format:{},
+    asReference: false,
+    formats: [],
+    defaultFormat: null,
     CLASS_NAME: "OpenLayers.WPS.ComplexPut"
 });
 
