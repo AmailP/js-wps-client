@@ -157,18 +157,6 @@ OpenLayers.WPS = OpenLayers.Class({
     processes: [],
 
     /**
-     * Property: timeOut
-     * {Integer}, ms
-     */
-    timeOut: 10000,
-
-    /**
-     * Property: statusLocation
-     * {String}
-     */
-    statusLocation: null,
-
-    /**
      * Property: status
      * {String}
      */
@@ -545,7 +533,7 @@ OpenLayers.WPS = OpenLayers.Class({
         }
 
         if (dom.attributes.getNamedItem("maxOccurs")) {
-            minOccurs = Number(dom.attributes.getNamedItem("maxOccurs").value);
+            maxOccurs = Number(dom.attributes.getNamedItem("maxOccurs").value);
         }
 
         return {
@@ -588,7 +576,7 @@ OpenLayers.WPS = OpenLayers.Class({
             for (i = 0; i < supportedFormats.length; i = i + 1) {
                 format = OpenLayers.WPS.Format.prototype.parseFormat(supportedFormats[i]);
                 formats.push(format);
-                if(format.equals(defaultFormatTmp)) {
+                if (format.equals(defaultFormatTmp)) {
                     defaultFormat = format;
                 }
             }
@@ -717,10 +705,18 @@ OpenLayers.WPS = OpenLayers.Class({
     /**
      * Method: execute
      *
-     * Parameter:
-     * identifier
+     * Parameters:
+     * processIdentifier - The identifier of the process that has to be executed
+     * parameters - An object containing the parameters for the WPS execution:
+     *          - responseForm [string]         : "ResponseDocument" (default) || "RawDataOutput"
+     *          - storeExecuteResponse [string] : "false" (default) || "true"
+     *          - lineage [string] : "false" (default) || "true"
+     *          - status [string] : "false" (default) || "true"
+     *          - pollingInterval (ms) [int] : 5000 (default)
+     * runIdentifier - A unique identifier for the starting process. This parameter is mandatory
+     *                 in case of multiple concurrent executions.
      */
-    execute: function(identifier, parameters) {
+    execute: function(processIdentifier, parameters, runIdentifier) {
         'use strict';
 
         var errorMessage;
@@ -732,15 +728,21 @@ OpenLayers.WPS = OpenLayers.Class({
         parameters.storeExecuteResponse = parameters.storeExecuteResponse || "false";
         parameters.lineage = parameters.lineage || "false";
         parameters.status = parameters.status || "false";
+        parameters.pollingInterval = parameters.pollingInterval || 5000;
+
+        /**
+         * The executions launched without an identifier are all tagged with the "default" identifier
+         */
+        runIdentifier = runIdentifier || "default";
 
         if (parameters.responseForm != "ResponseDocument") {
             errorMessage = "The " + parameters.responseForm + " response form is not currently supported.";
-            onException(this.getProcess(identifier), "NoApplicableCode", errorMessage);
+            onException(this.getProcess(processIdentifier), "NoApplicableCode", errorMessage, runIdentifier);
             return;
         }
 
         if (this.executeUrlPost) {
-            this.executePost(identifier, parameters);
+            this.executePost(processIdentifier, parameters, runIdentifier);
         }
     },
 
@@ -748,13 +750,16 @@ OpenLayers.WPS = OpenLayers.Class({
      * Method: executePost
      * Call Execute Request via HTTP POST
      *
-     * Parameter:
+     * Parameters:
      * identifier - {String}
+     * parameters - {Object}
+     * runIdentifier - {String}
      */
-    executePost : function(identifier, parameters) {
+    executePost : function(identifier, parameters, runIdentifier) {
         'use strict';
 
-        var i, uri, process, data, inputs, input, tmpl, outputs, output, format, formatStr, applyTemplate, encodeAmpersands, bboxes;
+        var i, uri, process, data, inputs, input, tmpl, outputs, output, format, formatStr;
+        var applyTemplate, encodeAmpersands, bboxes, runScope;
 
         uri = this.executeUrlPost;
         process = this.getProcess(identifier);
@@ -863,7 +868,14 @@ OpenLayers.WPS = OpenLayers.Class({
         data = data.replace("$OUTPUT_DEFINITIONS$", outputs);
 
         this.requestText = data;
-        OpenLayers.Request.POST({url: uri, data: data, success: this.parseExecute, failure: this.onException, scope: this});
+
+        runScope = {
+            wps: this,
+            runIdentifier: runIdentifier,
+            pollingInterval: parameters.pollingInterval
+        };
+
+        OpenLayers.Request.POST({url: uri, data: data, success: this.parseExecute, failure: this.onException, scope: runScope});
     },
 
     /**
@@ -876,13 +888,17 @@ OpenLayers.WPS = OpenLayers.Class({
     parseExecute: function(resp) {
         'use strict';
 
-        var i, that, text, dom, identifier, process, status, procOutputsDom, outputs, getRequest, exception;
-        var exceptionCode, locator, exceptionText, exceptionTextEl = "";
+        var i, self, text, dom, identifier, process, status, procOutputsDom, outputElements, getRequest, exception;
         var exceptionCode, locator, exceptionText, exceptionTextEl = "", runIdentifier, runScope, statusLocation, XMLproto;
+        var pollingInterval;
         XMLproto = OpenLayers.Format.XML.prototype;
 
+        runIdentifier = this.runIdentifier;
+        pollingInterval = this.pollingInterval;
+        self = this.wps;
+
         text = resp.responseText;
-        this.responseText = text;
+        self.responseText = text;
         if (OpenLayers.Util.getBrowserName() === "msie") {
             resp.responseXML = null;
             text = text.replace(/<\?xml .[^>]*>/, "");
@@ -898,57 +914,60 @@ OpenLayers.WPS = OpenLayers.Class({
                 exceptionText = XMLproto.getChildValue(exceptionTextEl[0]);
             }
 
-            this.onException(null, exceptionCode, "Locator: " + locator + "\n\nText:" + exceptionText);
+            self.onException(null, exceptionCode, "Locator: " + locator + (exceptionText ? ("\n\nText:" + exceptionText) : ""), runIdentifier);
             return;
         }
 
-        this.responseDOM = dom;
+        self.responseDOM = dom;
         try {
             statusLocation = XMLproto.getElementsByTagNameNS(dom, self.wpsNS, "ExecuteResponse")[0].getAttribute("statusLocation");
         } catch (e) {
-            this.statusLocation = null;
+            statusLocation = null;
         }
         identifier = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, self.owsNS, "Identifier")[0]);
         process = self.getProcess(identifier);
         status = XMLproto.getElementsByTagNameNS(dom, self.wpsNS, "Status");
         if (status.length > 0) {
-            this.parseStatus(status[0]);
+            self.parseStatus(status[0], runIdentifier);
         }
 
-        if (this.status === "ProcessSucceeded" || this.status === "ProcessStarted") {
-            procOutputsDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ProcessOutputs");
-            outputs = null;
+        if (self.status === "ProcessSucceeded" || self.status === "ProcessStarted") {
             procOutputsDom = XMLproto.getElementsByTagNameNS(dom, self.wpsNS, "ProcessOutputs");
+            outputElements = null;
             if (procOutputsDom.length) {
                 outputElements = XMLproto.getElementsByTagNameNS(procOutputsDom[0], self.wpsNS, "Output");
             }
-            for (i = 0; i < outputs.length; i = i + 1) {
-                this.parseExecuteOutput(process, outputs[i]);
+            for (i = 0; i < outputElements.length; i = i + 1) {
+                self.parseExecuteOutput(process, outputElements[i], runIdentifier);
             }
-        } else if (this.status === "ProcessFailed") {
-            this.parseProcessFailed(process, dom);
+        } else if (self.status === "ProcessFailed") {
+            self.parseProcessFailed(process, dom, runIdentifier);
         }
 
         // call to the correct "onStatus" user defined function
-        this.statusEvents[this.status].apply(this.scope, [process]);
-        this.onStatusChanged(this.status, process);
+        self.statusEvents[self.status].apply(self.scope, [process, runIdentifier]);
+        self.onStatusChanged(self.status, process, runIdentifier);
 
-        if (this.status !== "ProcessFailed" && this.status !== "ProcessSucceeded") {
-            if (this.statusLocation) {
-
-                that = this;
+        if (self.status !== "ProcessFailed" && self.status !== "ProcessSucceeded") {
+            if (statusLocation) {
 
                 getRequest = function (id) {
+                    runScope = {
+                        wps: self,
+                        runIdentifier: runIdentifier,
+                        pollingInterval: pollingInterval
+                    };
+
                     OpenLayers.Request.GET({
-                        url: that.statusLocation,
+                        url: statusLocation,
                         params: { salt: Math.random() },
-                        success: that.parseExecute,
-                        failure: that.onException,
-                        scope: that
+                        success: self.parseExecute,
+                        failure: self.onException,
+                        scope: runScope
                     });
                 };
 
-                window.setTimeout(getRequest, this.timeOut, this.id);
+                window.setTimeout(getRequest, pollingInterval, self.id);
             }
         }
     },
@@ -962,7 +981,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * process - {OpenLayers.WPS.Process} process, to which this output belongs to
      * dom - {DOMelement} <wps:Output />
      */
-    parseExecuteOutput: function(process, dom) {
+    parseExecuteOutput: function(process, dom, runId) {
         'use strict';
 
         var i, identifier, outputValues, literalData, complexData, boundingBoxData, reference, node, minxy, maxxy, crs, dimensions, XMLproto;
@@ -977,22 +996,22 @@ OpenLayers.WPS = OpenLayers.Class({
 
 
         if (reference.length > 0) {
-            output.setValue(OpenLayers.Format.XML.prototype.getAttributeNS(reference[0], this.xlinkNS, "href"));
+            outputValues[runId] = XMLproto.getAttributeNS(reference[0], this.xlinkNS, "href");
         }
         else if (literalData.length > 0) {
-            output.setValue(literalData[0].firstChild.nodeValue);
+            outputValues[runId] = XMLproto.getChildValue(literalData[0]);
         }
         else if (complexData.length > 0) {
             // set output do DOM
             for (i = 0; i < complexData[0].childNodes.length; i = i + 1) {
                 node = complexData[0].childNodes[i];
                 if (node.nodeType === 1) {
-                    output.setValue(node);
+                    outputValues[runId] = node;
                 }
             }
             // if output is still empty, try to fetch the text content
-            if (!output.getValue()) {
-                output.setValue(complexData[0].textContent);
+            if (!outputValues[runId]) {
+                outputValues[runId] = complexData[0].textContent;
             }
         }
         else if (boundingBoxData.length > 0) {
@@ -1000,7 +1019,7 @@ OpenLayers.WPS = OpenLayers.Class({
             maxxy = XMLproto.getElementsByTagNameNS(boundingBoxData, this.owsNS, "UpperCorner");
             crs = boundingBoxData.getAttribute("crs");
             dimensions = boundingBoxData.getAttribute("dimensions");
-            output.setValue([minxy.split(" ")[0], minxy.split(" ")[1], maxxy.split(" ")[0], maxxy.split(" ")[1]]);
+            outputValues[runId] = [minxy.split(" ")[0], minxy.split(" ")[1], maxxy.split(" ")[0], maxxy.split(" ")[1]];
             output.dimensions = dimensions;
             output.crs = crs;
         }
@@ -1016,6 +1035,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * creationTime - {String}
      * percentCompleted - {Float}
      */
+     // TODO Add support for multiple concurrent executions (runIdentifier)
     setStatus: function(status, message, creationTime, percentCompleted) {
         'use strict';
 
@@ -1031,7 +1051,8 @@ OpenLayers.WPS = OpenLayers.Class({
      * Parameters:
      * status - {dom}
      */
-    parseStatus: function(status) {
+     // TODO Add support for multiple concurrent executions (runIdentifier)
+    parseStatus: function(status, runIdentifier) {
         'use strict';
 
         var k, dom, XMLproto;
@@ -1054,7 +1075,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * Method: onAccepted
      * To be redefined by the user
      */
-    onAccepted: function(process) {
+    onAccepted: function(process, runIdentifier) {
         'use strict';
     },
 
@@ -1062,7 +1083,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * Method: onSucceeded
      * To be redefined by the user
      */
-    onSucceeded: function(process) {
+    onSucceeded: function(process, runIdentifier) {
         'use strict';
     },
 
@@ -1070,7 +1091,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * Method: onFailed
      * To be redefined by the user
      */
-    onFailed: function(process) {
+    onFailed: function(process, runIdentifier) {
         'use strict';
     },
 
@@ -1078,7 +1099,7 @@ OpenLayers.WPS = OpenLayers.Class({
      * Method: parseProcessFailed
      *
      */
-    parseProcessFailed: function(process, dom) {
+    parseProcessFailed: function(process, dom, runIdentifier) {
         'use strict';
 
         var Exception, code, text, ExceptionText, XMLproto;
@@ -1096,14 +1117,14 @@ OpenLayers.WPS = OpenLayers.Class({
                 text = '';
             }
         }
-        process.exception = {code: code, text: text};
+        process.exception = {code: code, text: text, runIdentifier: runIdentifier};
     },
 
     /**
      * Method: onStarted
      * To be redefined by the user
      */
-    onStarted: function(process) {
+    onStarted: function(process, runIdentifier) {
         'use strict';
     },
 
@@ -1287,6 +1308,8 @@ OpenLayers.WPS.Process = OpenLayers.Class({
     /**
      * Property: output
      * {List}
+     *
+     * The output list
      */
     outputs : [],
 
@@ -1303,10 +1326,16 @@ OpenLayers.WPS.Process = OpenLayers.Class({
     version: null,
 
     /**
-     * Property: status
+     * Property: statusSupported
      * {Boolean}
      */
-    status: false,
+    statusSupported: false,
+
+    /**
+     * Property: storeSupported
+     * {Boolean}
+     */
+    storeSupported: false,
 
     /**
      * Property: wps
@@ -1329,6 +1358,7 @@ OpenLayers.WPS.Process = OpenLayers.Class({
         this.inputs = [];
         this.exception = [];
         this.outputs = [];
+        this.outputsMap = {};
         this.metadata = {};
         this.version = null;
         this.status = false;
@@ -1463,7 +1493,7 @@ OpenLayers.WPS.Put = OpenLayers.Class({
      *
      * utility method to set the first value
      */
-    setValue: function(value) {
+    setValue: function(value, runIdentifier) {
         'use strict';
         this.values[0] = value;
     },
