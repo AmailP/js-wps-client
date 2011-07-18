@@ -323,37 +323,39 @@ OpenLayers.WPS = OpenLayers.Class({
         'use strict';
 
         var dom, operationsMetadataNode, operationsMetadata, i, operationName, getNode, getURL, postNode, postURL,
-            processesNode, processes, identifier, title, abstract, version, process;
+            processesNode, processes, identifier, title, processAbstract, version, process, XMLproto;
+
+        XMLproto = OpenLayers.Format.XML.prototype;
 
         this.responseText = resp.responseText;
         dom = resp.responseXML || OpenLayers.parseXMLString(resp.responseText);
         this.responseDOM = dom;
-        this.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
-        this.abstract = null;
+        this.title = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, this.owsNS, "Title")[0]);
+        this.abstr = null;
         try {
-            this.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
+            this.abstr = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0]);
         } catch (e1) {
         }
 
         // describeProcess Get, Post
         // execute Get, Post
 
-        operationsMetadataNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "OperationsMetadata")[0];
-        operationsMetadata = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadataNode, this.owsNS, "Operation");
+        operationsMetadataNode = XMLproto.getElementsByTagNameNS(dom, this.owsNS, "OperationsMetadata")[0];
+        operationsMetadata = XMLproto.getElementsByTagNameNS(operationsMetadataNode, this.owsNS, "Operation");
         for (i = 0; i < operationsMetadata.length; i = i + 1) {
 
             operationName = operationsMetadata[i].getAttribute("name");
 
-            getNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i], this.owsNS, "Get")[0];
+            getNode = XMLproto.getElementsByTagNameNS(operationsMetadata[i], this.owsNS, "Get")[0];
             getURL = "";
             if (getNode) {
-                getURL = OpenLayers.Format.XML.prototype.getAttributeNS(getNode, this.xlinkNS, "href");
+                getURL = XMLproto.getAttributeNS(getNode, this.xlinkNS, "href");
             }
 
-            postNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(operationsMetadata[i], this.owsNS, "Post")[0];
+            postNode = XMLproto.getElementsByTagNameNS(operationsMetadata[i], this.owsNS, "Post")[0];
             postURL = "";
             if (postNode) {
-                postURL = OpenLayers.Format.XML.prototype.getAttributeNS(postNode, this.xlinkNS, "href");
+                postURL = XMLproto.getAttributeNS(postNode, this.xlinkNS, "href");
             }
 
             switch (operationName.toLowerCase()) {
@@ -374,18 +376,18 @@ OpenLayers.WPS = OpenLayers.Class({
 
         // processes
         this.processes = [];
-        processesNode = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ProcessOfferings")[0];
-        processes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processesNode, this.wpsNS, "Process");
+        processesNode = XMLproto.getElementsByTagNameNS(dom, this.wpsNS, "ProcessOfferings")[0];
+        processes = XMLproto.getElementsByTagNameNS(processesNode, this.wpsNS, "Process");
         for (i = 0; i < processes.length; i = i + 1) {
-            identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Identifier")[0].firstChild.nodeValue;
-            title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Title")[0].firstChild.nodeValue;
-            abstract = null;
+            identifier = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(processes[i], this.owsNS, "Identifier")[0]);
+            title = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(processes[i], this.owsNS, "Title")[0]);
+            processAbstract = null;
             try {
-                abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processes[i], this.owsNS, "Abstract")[0].firstChild.nodeValue;
+                processAbstract = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(processes[i], this.owsNS, "Abstract")[0]);
             } catch (e2) {
             }
-            version = OpenLayers.Format.XML.prototype.getAttributeNS(processes[i], this.wpsNS, "version");
-            process = new OpenLayers.WPS.Process({identifier: identifier, title: title, abstract: abstract, version: version, wps: this});
+            version = XMLproto.getAttributeNS(processes[i], this.wpsNS, "version");
+            process = new OpenLayers.WPS.Process({identifier: identifier, title: title, abstr: processAbstract, version: version, wps: this});
             this.addProcess(process);
         }
 
@@ -428,7 +430,8 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeProcess: function (resp) {
         'use strict';
 
-        var i, dom, processElements, identifier, process, processElement;
+        var i, dom, processElements, identifier, process, processElement, storeSupported, statusSupported, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
         try {
             this.responseText = resp.responseText;
@@ -438,7 +441,7 @@ OpenLayers.WPS = OpenLayers.Class({
             processElements = dom.getElementsByTagName("ProcessDescription");
             for (i = 0; i < processElements.length; i = i + 1) {
                 processElement = processElements[i];
-                identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processElement, this.owsNS, "Identifier")[0].firstChild.nodeValue;
+                identifier = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(processElement, this.owsNS, "Identifier")[0]);
                 process = this.getProcess(identifier);
 
                 if (!process) {
@@ -446,9 +449,23 @@ OpenLayers.WPS = OpenLayers.Class({
                     this.addProcess(process);
                 }
 
-                process.title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processElement, this.owsNS, "Title")[0].firstChild.nodeValue;
-                process.abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(processElement, this.owsNS, "Abstract")[0].firstChild.nodeValue;
-                process.version = OpenLayers.Format.XML.prototype.getAttributeNS(processElement, this.wpsNS, "processVersion");
+                storeSupported = processElement.getAttribute("storeSupported");
+                if (storeSupported) {
+                    process.storeSupported = storeSupported.toLowerCase() === 'true';
+                } else {
+                    process.storeSupported = false;
+                }
+
+                statusSupported = processElement.getAttribute("statusSupported");
+                if (statusSupported) {
+                    process.statusSupported = statusSupported.toLowerCase() === 'true';
+                } else {
+                    process.statusSupported = false;
+                }
+
+                process.title = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(processElement, this.owsNS, "Title")[0]);
+                process.abstract = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(processElement, this.owsNS, "Abstract")[0]);
+                process.version = XMLproto.getAttributeNS(processElement, this.wpsNS, "processVersion");
 
                 /* parseInputs */
                 process.inputs = this.parseDescribePuts(processElement.getElementsByTagName("Input"));
@@ -477,7 +494,8 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribePuts: function (puts) {
         'use strict';
 
-        var i, wpsputs, metadataDom, metadata;
+        var i, wpsputs, metadataDom, metadata, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
         wpsputs = [];
         for (i = 0; i < puts.length; i = i + 1) {
@@ -500,10 +518,10 @@ OpenLayers.WPS = OpenLayers.Class({
             }
 
             // metadata
-            metadataDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(puts[i], this.owsNS, "Metadata");
+            metadataDom = XMLproto.getElementsByTagNameNS(puts[i], this.owsNS, "Metadata");
             metadata = {};
             if (metadataDom.length > 0) {
-                metadataDom[OpenLayers.Format.XML.prototype.getAttributeNS(metadataDom[i], this.xlinkNS, "title")] = metadataDom[i].firstChild.nodeValue;
+                metadataDom[XMLproto.getAttributeNS(metadataDom[i], this.xlinkNS, "title")] = XMLproto.getChildValue(metadataDom[i]);
             }
             wpsputs[wpsputs.length - 1].metadata = metadata;
         }
@@ -513,15 +531,13 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeCommonPuts: function (dom) {
         'use strict';
 
-        var i, identifier, title, abstract, minOccurs, maxOccurs, attribute;
+        var i, identifier, title, abstr, minOccurs, maxOccurs, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
-        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
-        title = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Title")[0].firstChild.nodeValue;
-        abstract = null;
-        try {
-            abstract = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0].firstChild.nodeValue;
-        } catch(e) {
-        }
+        identifier = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0]);
+        title = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, this.owsNS, "Title")[0]);
+        abstr = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, this.owsNS, "Abstract")[0]);
+
 
 
         if (dom.attributes.getNamedItem("minOccurs")) {
@@ -535,7 +551,7 @@ OpenLayers.WPS = OpenLayers.Class({
         return {
             identifier: identifier,
             title: title,
-            abstract: abstract,
+            abstract: abstr,
             minOccurs: minOccurs,
             maxOccurs: maxOccurs
         };
@@ -648,7 +664,8 @@ OpenLayers.WPS = OpenLayers.Class({
     parseDescribeLiteralPuts: function(dom) {
         'use strict';
 
-        var i, commons, allowedValues, type, defaultValue, nodes, dataType, min, max;
+        var i, commons, allowedValues, type, defaultValue, nodes, dataType, min, max, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
         commons = this.parseDescribeCommonPuts(dom);
 
@@ -657,27 +674,26 @@ OpenLayers.WPS = OpenLayers.Class({
         defaultValue = null;
 
         // dataType
-        dataType = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "DataType")[0];
+        dataType = XMLproto.getElementsByTagNameNS(dom, this.owsNS, "DataType")[0];
         if (dataType) {
-            type = dataType.firstChild.nodeValue.toLowerCase();
+            type = XMLproto.getChildValue(dataType).toLowerCase();
         }
         // anyValue
-        if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "AnyValue").length > 0) {
+        if (XMLproto.getElementsByTagNameNS(dom, this.owsNS, "AnyValue").length > 0) {
             allowedValues = ["*"];
         }
         // allowedValues
-        else if (OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "AllowedValues").length > 0) {
-            nodes = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS,
-                "AllowedValues")[0].childNodes;
+        else if (XMLproto.getElementsByTagNameNS(dom, this.owsNS, "AllowedValues").length > 0) {
+            nodes = XMLproto.getElementsByTagNameNS(dom, this.owsNS, "AllowedValues")[0].childNodes;
             // allowedValues
             for (i = 0; i < nodes.length; i = i + 1) {
                 if (nodes[i].nodeType === 1) { // skip text and comments
                     if (nodes[i].localName === "Value") {
-                        allowedValues.push(nodes[i].firstChild.nodeValue);
+                        allowedValues.push(XMLproto.getChildValue(nodes[i]));
                     } else if (nodes[i].localName === "Range") {
                         // range
-                        min = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(nodes[i], this.owsNS, "MinimumValue")[0].firstChild.nodeValue;
-                        max = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(nodes[i], this.owsNS, "MaximumValue")[0].firstChild.nodeValue;
+                        min = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(nodes[i], this.owsNS, "MinimumValue")[0]);
+                        max = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(nodes[i], this.owsNS, "MaximumValue")[0]);
                         allowedValues.push([min,max]);
                     }
                 }
@@ -862,6 +878,8 @@ OpenLayers.WPS = OpenLayers.Class({
 
         var i, that, text, dom, identifier, process, status, procOutputsDom, outputs, getRequest, exception;
         var exceptionCode, locator, exceptionText, exceptionTextEl = "";
+        var exceptionCode, locator, exceptionText, exceptionTextEl = "", runIdentifier, runScope, statusLocation, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
         text = resp.responseText;
         this.responseText = text;
@@ -871,13 +889,13 @@ OpenLayers.WPS = OpenLayers.Class({
         }
         dom = resp.responseXML || OpenLayers.parseXMLString(text);
 
-        if (OpenLayers.Format.XML.prototype.getChildEl(dom).localName === "ExceptionReport") {
-            exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Exception")[0];
+        if (XMLproto.getChildEl(dom).localName === "ExceptionReport") {
+            exception = XMLproto.getElementsByTagNameNS(dom, self.owsNS, "Exception")[0];
             exceptionCode = exception.getAttribute("exceptionCode");
             locator = exception.getAttribute("locator");
-            exceptionTextEl = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(exception, this.owsNS, "ExceptionText");
+            exceptionTextEl = XMLproto.getElementsByTagNameNS(exception, self.owsNS, "ExceptionText");
             if (exceptionTextEl.length > 0) {
-                exceptionText = OpenLayers.Format.XML.prototype.getChildValue(exceptionTextEl[0]);
+                exceptionText = XMLproto.getChildValue(exceptionTextEl[0]);
             }
 
             this.onException(null, exceptionCode, "Locator: " + locator + "\n\nText:" + exceptionText);
@@ -886,13 +904,13 @@ OpenLayers.WPS = OpenLayers.Class({
 
         this.responseDOM = dom;
         try {
-            this.statusLocation = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ExecuteResponse")[0].getAttribute("statusLocation");
+            statusLocation = XMLproto.getElementsByTagNameNS(dom, self.wpsNS, "ExecuteResponse")[0].getAttribute("statusLocation");
         } catch (e) {
             this.statusLocation = null;
         }
-        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
-        process = this.getProcess(identifier);
-        status = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "Status");
+        identifier = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, self.owsNS, "Identifier")[0]);
+        process = self.getProcess(identifier);
+        status = XMLproto.getElementsByTagNameNS(dom, self.wpsNS, "Status");
         if (status.length > 0) {
             this.parseStatus(status[0]);
         }
@@ -900,8 +918,9 @@ OpenLayers.WPS = OpenLayers.Class({
         if (this.status === "ProcessSucceeded" || this.status === "ProcessStarted") {
             procOutputsDom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ProcessOutputs");
             outputs = null;
+            procOutputsDom = XMLproto.getElementsByTagNameNS(dom, self.wpsNS, "ProcessOutputs");
             if (procOutputsDom.length) {
-                outputs = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(procOutputsDom[0], this.wpsNS, "Output");
+                outputElements = XMLproto.getElementsByTagNameNS(procOutputsDom[0], self.wpsNS, "Output");
             }
             for (i = 0; i < outputs.length; i = i + 1) {
                 this.parseExecuteOutput(process, outputs[i]);
@@ -946,14 +965,15 @@ OpenLayers.WPS = OpenLayers.Class({
     parseExecuteOutput: function(process, dom) {
         'use strict';
 
-        var i, identifier, output, literalData, complexData, boundingBoxData, reference, node, minxy, maxxy, crs, dimensions;
+        var i, identifier, outputValues, literalData, complexData, boundingBoxData, reference, node, minxy, maxxy, crs, dimensions, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
-        identifier = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0].firstChild.nodeValue;
-        output = process.getOutput(identifier);
-        literalData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "LiteralData");
-        complexData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "ComplexData");
-        boundingBoxData = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "BoundingBox");
-        reference = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.wpsNS, "Reference");
+        identifier = XMLproto.getChildValue(XMLproto.getElementsByTagNameNS(dom, this.owsNS, "Identifier")[0]);
+        outputValues = process.getOutput(identifier).getValues();
+        literalData = XMLproto.getElementsByTagNameNS(dom, this.wpsNS, "LiteralData");
+        complexData = XMLproto.getElementsByTagNameNS(dom, this.wpsNS, "ComplexData");
+        boundingBoxData = XMLproto.getElementsByTagNameNS(dom, this.wpsNS, "BoundingBox");
+        reference = XMLproto.getElementsByTagNameNS(dom, this.wpsNS, "Reference");
 
 
         if (reference.length > 0) {
@@ -976,8 +996,8 @@ OpenLayers.WPS = OpenLayers.Class({
             }
         }
         else if (boundingBoxData.length > 0) {
-            minxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData, this.owsNS, "LowerCorner");
-            maxxy = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(boundingBoxData, this.owsNS, "UpperCorner");
+            minxy = XMLproto.getElementsByTagNameNS(boundingBoxData, this.owsNS, "LowerCorner");
+            maxxy = XMLproto.getElementsByTagNameNS(boundingBoxData, this.owsNS, "UpperCorner");
             crs = boundingBoxData.getAttribute("crs");
             dimensions = boundingBoxData.getAttribute("dimensions");
             output.setValue([minxy.split(" ")[0], minxy.split(" ")[1], maxxy.split(" ")[0], maxxy.split(" ")[1]]);
@@ -1014,14 +1034,15 @@ OpenLayers.WPS = OpenLayers.Class({
     parseStatus: function(status) {
         'use strict';
 
-        var k, dom;
+        var k, dom, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
         for (k in this.statusEvents) {
             if (this.statusEvents.hasOwnProperty(k)) {
-                dom = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(status, this.wpsNS, k);
+                dom = XMLproto.getElementsByTagNameNS(status, this.wpsNS, k);
                 if (dom.length > 0) {
                     this.setStatus(k,
-                        dom[0].firstChild.nodeValue,
+                        XMLproto.getChildValue(dom[0]),
                         status.getAttribute("creationTime"),
                         dom[0].getAttribute("percentCompleted"));
                 }
@@ -1060,16 +1081,17 @@ OpenLayers.WPS = OpenLayers.Class({
     parseProcessFailed: function(process, dom) {
         'use strict';
 
-        var Exception, code, text, ExceptionText;
+        var Exception, code, text, ExceptionText, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
 
-        Exception = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "Exception");
+        Exception = XMLproto.getElementsByTagNameNS(dom, this.owsNS, "Exception");
         if (Exception.length) {
             code = Exception[0].getAttribute('exceptionCode');
         }
-        ExceptionText = OpenLayers.Format.XML.prototype.getElementsByTagNameNS(dom, this.owsNS, "ExceptionText");
+        ExceptionText = XMLproto.getElementsByTagNameNS(dom, this.owsNS, "ExceptionText");
         if (ExceptionText.length) {
             try {
-                text = ExceptionText[0].firstChild.nodeValue;
+                text = XMLproto.getChildValue(ExceptionText[0]);
             } catch(e) {
                 text = '';
             }
@@ -1248,7 +1270,7 @@ OpenLayers.WPS.Process = OpenLayers.Class({
      * Property: abstract
      * {String}
      */
-    abstract: null,
+    abstr: null,
 
     /**
      * Property: inputs
@@ -1303,7 +1325,7 @@ OpenLayers.WPS.Process = OpenLayers.Class({
 
         this.identifier = null;
         this.title = null;
-        this.abstract = null;
+        this.abst = null;
         this.inputs = [];
         this.exception = [];
         this.outputs = [];
@@ -1501,7 +1523,7 @@ OpenLayers.WPS.Format = OpenLayers.Class({
      */
     schema: null,
 
-     /**
+    /**
      * Property:    encoding
      * {String}
      */
@@ -1521,25 +1543,26 @@ OpenLayers.WPS.Format = OpenLayers.Class({
     },
 
     equals: function(other) {
-        return this.mimeType === other.mimeType && this.schema === other.schema && this.encoding === other.encoding ;
+        return this.mimeType === other.mimeType && this.schema === other.schema && this.encoding === other.encoding;
     },
 
     parseFormat: function(formatNode) {
-        var mimeType, schemaEl, schema, encodingEl, encoding;
+        var mimeType, schemaEl, schema, encodingEl, encoding, XMLproto;
+        XMLproto = OpenLayers.Format.XML.prototype;
         //mimeType is mandatory in the standard
-        mimeType = formatNode.getElementsByTagName("MimeType")[0].firstChild.nodeValue;
+        mimeType = XMLproto.getChildValue(formatNode.getElementsByTagName("MimeType")[0]);
 
         schemaEl = formatNode.getElementsByTagName("Schema");
         if (schemaEl.length > 0) {
-            schema = schemaEl[0].firstChild.nodeValue;
+            schema = XMLproto.getChildValue(schemaEl[0]);
         }
 
         encodingEl = formatNode.getElementsByTagName("Schema");
         if (encodingEl.length > 0) {
-            encoding = encodingEl[0].firstChild.nodeValue;
+            encoding = XMLproto.getChildValue(encodingEl[0]);
         }
 
-        return new OpenLayers.WPS.Format(mimeType, schema, encoding) ;
+        return new OpenLayers.WPS.Format(mimeType, schema, encoding);
     }
 });
 
